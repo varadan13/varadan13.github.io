@@ -1,11 +1,11 @@
 ---
 title: "Moving a Git Branch to a Newer Commit"
-description:
-  'Foto de <a class="underline"  href="https://unsplash.com/es/fotos/flores-rojas-azules-y-blancas-5TK1F5VfdIk">Europeana </a> en <a class="underline" href="https://unsplash.com/es/fotos/una-pintura-en-el-techo-de-un-edificio-1rBg5YSi00c?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>
-  '
-icon: "3"
-pubDate: "Jul 08 2022"
-heroImage: "/src/assets/euro.jpg"
+description: "Moving a Git Branch to a Newer Commit"
+pubDate: "Apr 03 2025"
+updatedDate: "Apr 03 2025"
+hide: false
+tags:
+  - Git
 ---
 
 To update your branch `initial-exploration` to point to a newer commit (`d293dsfre`) in the commit graph, you can follow these steps:
