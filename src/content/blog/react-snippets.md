@@ -153,7 +153,7 @@ function App() {
 
 ## A promise wrapper to use inside a component that must trigger suspense boundary
 
-> > a resource management system for React Suspense
+> a resource management system for React Suspense
 
 ```jsx
 function createResource(promise) {
@@ -176,5 +176,45 @@ function createResource(promise) {
       throw new Error("This should be impossible");
     },
   };
+}
+```
+
+## A component that triggers suspend boundaries using the use hook.
+
+```jsx
+import {use} from 'react';
+import { fetchData } from './data.js';
+
+export default function Albums({ artistId }) {
+  const albums = use(fetchData(`/${artistId}/albums`));
+  return (
+    <ul>
+      {albums.map(album => (
+        <li key={album.id}>
+          {album.title} ({album.year})
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+
+
+import { Suspense } from 'react';
+import Albums from './Albums.js';
+
+export default function ArtistPage({ artist }) {
+  return (
+    <>
+      <h1>{artist.name}</h1>
+      <Suspense fallback={<Loading />}>
+        <Albums artistId={artist.id} />
+      </Suspense>
+    </>
+  );
+}
+
+function Loading() {
+  return <h2>🌀 Loading...</h2>;
 }
 ```
