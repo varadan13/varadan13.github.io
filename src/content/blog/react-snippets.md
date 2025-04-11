@@ -9,7 +9,7 @@ tags:
   - Snippets
 ---
 
-## Rendering component only in the client
+### Rendering component only in the client
 
 ```jsx
 import { useState, useEffect } from "react";
@@ -35,7 +35,7 @@ export const ClientOnly = ({ children }) => {
 };
 ```
 
-## Loading libraries only in the client
+### Loading libraries only in the client
 
 ```jsx
 const Lottie =
@@ -44,7 +44,7 @@ const Lottie =
     : dynamic(() => import("react-lottie"));
 ```
 
-## Rendering component only in client using suspense boundary.
+### Rendering component only in client using suspense boundary.
 
 ```jsx
 <Suspense fallback={<Loading />}>
@@ -59,7 +59,7 @@ function Chat() {
 }
 ```
 
-## A dumb component that activates the suspense boundary.
+### A dumb component that activates the suspense boundary.
 
 ```jsx
 let pokemon;
@@ -92,7 +92,7 @@ function App() {
 }
 ```
 
-## A component that activates the suspense and error boundaries.
+### A component that activates the suspense and error boundaries.
 
 ```jsx
 function createResource(promise) {
@@ -166,7 +166,7 @@ function App() {
 }
 ```
 
-## A promise wrapper to use inside a component that must trigger suspense boundary
+### A promise wrapper to use inside a component that must trigger suspense boundary
 
 > a resource management system for React Suspense
 
@@ -194,7 +194,7 @@ function createResource(promise) {
 }
 ```
 
-## A component that triggers suspend boundaries using the use hook.
+### A component that triggers suspend boundaries using the use hook.
 
 ```jsx
 import {use} from 'react';
@@ -232,4 +232,41 @@ export default function ArtistPage({ artist }) {
 function Loading() {
   return <h2>🌀 Loading...</h2>;
 }
+```
+
+### A graphql mutation function that allows the ui to show proper error validations.
+
+```jsx
+const createOnboardingData = async ({ input }) => {
+  try {
+    const res = await client.clientPrivate.mutate({
+      client: client.clientPrivate,
+      mutation: createOnboardingDataMutation,
+      variables: {
+        input,
+      },
+    });
+
+    if (
+      res &&
+      Array.isArray(res?.data?.create_onboarding_data?.error) &&
+      res.data.create_onboarding_data.error[0]
+    ) {
+      return {
+        error: res.data.create_onboarding_data.error[0]?.description,
+        isError: true,
+      };
+    }
+    return {
+      error: null,
+      isError: false,
+    };
+  } catch (error) {
+    return {
+      error:
+        "Oops! Something didn't work as expected. Please contact support if the issue persists.",
+      isError: true,
+    };
+  }
+};
 ```
