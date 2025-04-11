@@ -44,6 +44,21 @@ const Lottie =
     : dynamic(() => import("react-lottie"));
 ```
 
+## Rendering component only in client using suspense boundary.
+
+```jsx
+<Suspense fallback={<Loading />}>
+  <Chat />
+</Suspense>;
+
+function Chat() {
+  if (typeof window === "undefined") {
+    throw Error("Chat should only render on the client.");
+  }
+  // ...
+}
+```
+
 ## A dumb component that activates the suspense boundary.
 
 ```jsx
