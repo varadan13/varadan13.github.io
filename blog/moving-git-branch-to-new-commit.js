@@ -33,18 +33,4 @@ git log --oneline
 </pre>
 
 <p>This will show you that <span>initial-exploration</span> is now at <span>d293dsfre</span>.</p>
-
-<pre>
-<code>
-git reset --soft d293dsfre
-</code>
-</pre>
-
-<p>Alternatively, if you want to create a new branch at <span>d293dsfre</span> instead of updating <span>initial-exploration</span>, you can do:</p>
-
-<pre>
-<code>
-git checkout -b new-branch-name d293dsfre
-</code>
-</pre>
 `

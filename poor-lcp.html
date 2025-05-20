@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Store - Very Poor LCP Example</title>
+    <style>
+        /* CSS reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header styles */
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav ul li {
+            margin-left: 20px;
+        }
+        
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* Hero section */
+        .hero {
+            background-color: #f9f9f9;
+            padding: 60px 0;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            color: #7f8c8d;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: #e74c3c;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        /* Products section */
+        .products {
+            padding: 60px 0;
+        }
+        
+        .products h2 {
+            font-size: 36px;
+            margin-bottom: 40px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+        }
+        
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .product-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .product-info {
+            padding: 20px;
+        }
+        
+        .product-title {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .product-price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        /* Footer styles */
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .footer-column h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-column ul li a {
+            color: #ecf0f1;
+            text-decoration: none;
+        }
+        
+        .copyright {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 20px;
+            font-size: 14px;
+        }
+        
+        /* Extremely inefficient CSS with lots of unnecessary animations and transitions */
+        .animated-element {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .heavy-shadow {
+            box-shadow: 0 0 10px rgba(0,0,0,0.3), 
+                        0 0 20px rgba(0,0,0,0.2), 
+                        0 0 30px rgba(0,0,0,0.1);
+        }
+        
+        /* Complicated gradient backgrounds */
+        .gradient-bg {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Render-blocking third-party scripts loaded early -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    
+    <!-- Large, unoptimized analytics script -->
+    <script>
+        // Simulated heavy analytics script
+        function trackPageView() {
+            console.log("Page view tracked");
+            // Simulate CPU-intensive analytics processing
+            let result = 0;
+            for (let i = 0; i < 10000000; i++) {
+                result += Math.random() * Math.random();
+            }
+            return result;
+        }
+        
+        // Run the heavy function immediately
+        trackPageView();
+    </script>
+    
+    <header>
+        <div class="container header-content">
+            <div class="logo animated-element">ShopNow</div>
+            <nav>
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">Products</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <section class="hero">
+        <div class="container">
+            <h1 class="animated-element">Summer Sale</h1>
+            <p>Get up to 50% off on all products</p>
+            <a href="#" class="btn heavy-shadow">Shop Now</a>
+        </div>
+    </section>
+    
+    <section class="products gradient-bg">
+        <div class="container">
+            <h2>Featured Products</h2>
+            <div class="product-grid">
+                <!-- Product 1 - with extremely large, unoptimized image -->
+                <div class="product-card heavy-shadow">
+                    <img src="/public/bg-image.jpg" alt="Product 1" class="product-image">
+                    <div class="product-info">
+                        <h3 class="product-title">Premium Headphones</h3>
+                        <p class="product-price">$199.99</p>
+                    </div>
+                </div>
+                
+                <!-- Product 2 - with extremely large, unoptimized image -->
+                <div class="product-card heavy-shadow">
+                    <img src="/public/bg-image.jpg" alt="Product 2" class="product-image">
+                    <div class="product-info">
+                        <h3 class="product-title">Wireless Speaker</h3>
+                        <p class="product-price">$149.99</p>
+                    </div>
+                </div>
+                
+                <!-- Product 3 - with extremely large, unoptimized image -->
+                <div class="product-card heavy-shadow">
+                    <img src="/public/bg-image.jpg" alt="Product 3" class="product-image">
+                    <div class="product-info">
+                        <h3 class="product-title">Smart Watch</h3>
+                        <p class="product-price">$299.99</p>
+                    </div>
+                </div>
+                
+                <!-- Product 4 - with extremely large, unoptimized image -->
+                <div class="product-card heavy-shadow">
+                    <img src="/public/bg-image.jpg" alt="Product 4" class="product-image">
+                    <div class="product-info">
+                        <h3 class="product-title">Laptop Stand</h3>
+                        <p class="product-price">$79.99</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Newsletter with another render-blocking script -->
+    <section class="newsletter" style="padding: 60px 0; background-color: #ecf0f1; text-align: center;">
+        <div class="container">
+            <h2 style="margin-bottom: 20px;">Subscribe to Our Newsletter</h2>
+            <form id="newsletter-form" style="max-width: 500px; margin: 0 auto;">
+                <input type="email" placeholder="Your Email Address" style="width: 70%; padding: 12px; border: 1px solid #ddd; border-radius: 5px 0 0 5px;">
+                <button type="submit" style="width: 30%; padding: 12px; background-color: #e74c3c; color: white; border: none; border-radius: 0 5px 5px 0; cursor: pointer;">Subscribe</button>
+            </form>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>Shop</h3>
+                    <ul>
+                        <li><a href="#">New Arrivals</a></li>
+                        <li><a href="#">Best Sellers</a></li>
+                        <li><a href="#">Sale</a></li>
+                        <li><a href="#">Collections</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Customer Service</h3>
+                    <ul>
+                        <li><a href="#">Contact Us</a></li>
+                        <li><a href="#">FAQs</a></li>
+                        <li><a href="#">Shipping & Returns</a></li>
+                        <li><a href="#">Size Guide</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>About Us</h3>
+                    <ul>
+                        <li><a href="#">Our Story</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Sustainability</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Legal</h3>
+                    <ul>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Cookie Policy</a></li>
+                        <li><a href="#">Accessibility</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                &copy; 2025 ShopNow. All rights reserved.
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Simulate a large amount of JavaScript that blocks rendering -->
+    <script>
+        // Simulating very inefficient JavaScript that blocks rendering
+        document.addEventListener('DOMContentLoaded', function() {
+            // Force layout recalculation with every iteration
+            for (let i = 0; i < 1000; i++) {
+                const body = document.body;
+                body.style.padding = (i % 2) + 'px';
+                console.log(body.offsetHeight); // Forces layout recalculation
+                body.style.padding = '0px';
+            }
+            
+            // Add heavy animations to all product cards
+            const productCards = document.querySelectorAll('.product-card');
+            productCards.forEach(card => {
+                card.addEventListener('mouseover', function() {
+                    // Create expensive shadow effects
+                    this.style.boxShadow = '0 15px 30px rgba(0,0,0,0.2), 0 10px 10px rgba(0,0,0,0.2)';
+                    // Run intensive calculation
+                    let result = 0;
+                    for (let i = 0; i < 100000; i++) {
+                        result += Math.random();
+                    }
+                });
+                
+                card.addEventListener('mouseout', function() {
+                    this.style.boxShadow = 'none';
+                });
+            });
+        });
+    </script>
+    
+    <!-- Simulated lazy loading that's not actually lazy -->
+    <script>
+        // Pretend we're lazy loading images but we're actually not
+        function fakeImageLazyLoad() {
+            const images = document.querySelectorAll('img');
+            
+            // This actually forces all images to load immediately
+            images.forEach(img => {
+                const src = img.getAttribute('src');
+                img.setAttribute('data-src', src);
+                // We're actually still loading the image immediately
+                // just with a useless data attribute
+            });
+            
+            console.log('Images "lazy loaded"');
+        }
+        
+        // Run immediately
+        fakeImageLazyLoad();
+    </script>
+    
+    <!-- Large font loading -->
+    <script>
+        // Load multiple font weights without font-display: swap
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                @font-face {
+                    font-family: 'CustomFont';
+                    src: url('https://fonts.example.com/font-thin.woff2') format('woff2');
+                    font-weight: 100;
+                    font-style: normal;
+                }
+                @font-face {
+                    font-family: 'CustomFont';
+                    src: url('https://fonts.example.com/font-light.woff2') format('woff2');
+                    font-weight: 300;
+                    font-style: normal;
+                }
+                @font-face {
+                    font-family: 'CustomFont';
+                    src: url('https://fonts.example.com/font-regular.woff2') format('woff2');
+                    font-weight: 400;
+                    font-style: normal;
+                }
+                @font-face {
+                    font-family: 'CustomFont';
+                    src: url('https://fonts.example.com/font-medium.woff2') format('woff2');
+                    font-weight: 500;
+                    font-style: normal;
+                }
+                @font-face {
+                    font-family: 'CustomFont';
+                    src: url('https://fonts.example.com/font-bold.woff2') format('woff2');
+                    font-weight: 700;
+                    font-style: normal;
+                }
+                body {
+                    font-family: 'CustomFont', Arial, sans-serif;
+                }
+            </style>
+        `);
+    </script>
+</body>
+</html>
