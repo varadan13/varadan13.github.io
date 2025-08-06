@@ -186,10 +186,7 @@
       </header>
 
       <div class="audio-controls">
-        <button
-          class="audio-btn play-btn"
-          onclick="playArticle('articleContent1')"
-        >
+        <button class="audio-btn play-btn" data-id="articleContent1">
           ▶ Play
         </button>
         <span class="audio-status" id="audioStatus">Ready to play</span>
@@ -401,10 +398,7 @@
       </article>
 
       <div class="audio-controls">
-        <button
-          class="audio-btn play-btn"
-          onclick="playArticle('articleContent2')"
-        >
+        <button class="audio-btn play-btn" data-id="articleContent2">
           ▶ Play
         </button>
         <span class="audio-status" id="audioStatus">Ready to play</span>
@@ -546,15 +540,53 @@
     </div>
 
     <script>
-      const voices = speechSynthesis.getVoices();
+      const $$ = document.querySelectorAll.bind(document);
 
-      function playArticle(articleId) {
+      const synth = window.speechSynthesis;
+
+      const loadVoices = () =>
+        new Promise((res) => {
+          let voices;
+
+          function handleChange() {
+            voices = synth.getVoices();
+            res(voices);
+          }
+          if ("onvoiceschanged" in synth) {
+            synth.onvoiceschanged = handleChange();
+          } else {
+            handleChange();
+          }
+        });
+
+      const nameOfVoice = "Google UK English Female";
+
+      async function playArticle(articleId) {
+        const voices = await loadVoices();
         const articleContent = document.getElementById(articleId);
         const text = articleContent.innerText;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = voices.find((v) => v.lang.startsWith("en"));
-        speechSynthesis.speak(utterance);
+
+        if (voices.length !== 0) {
+          const utterance = new SpeechSynthesisUtterance(text);
+
+          utterance.voice = voices.find((ele) => ele.name === nameOfVoice);
+
+          try {
+            synth?.speak?.(utterance);
+          } catch (error) {
+            throw new Error(error);
+          }
+        } else {
+          throw new Error("No voices available to speak!");
+        }
       }
+
+      $$(".audio-btn.play-btn").forEach((ele) => {
+        const articleId = ele.getAttribute("data-id");
+        ele.addEventListener("click", async () => {
+          await playArticle(articleId);
+        });
+      });
     </script>
   </body>
 </html>
