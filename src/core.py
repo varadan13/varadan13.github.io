@@ -11,7 +11,7 @@ parser = LlamaParse(
    result_type = "markdown",  
    )
 
-file_name = "./example.pdf"
+file_name = "./input.pdf"
 extra_info = {"file_name": file_name}
 
 with open(f"./{file_name}", "rb") as f:
