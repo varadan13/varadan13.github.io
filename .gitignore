@@ -3,3 +3,4 @@ venv/
 .env
 input.pdf
 output.md
+node_modules/
