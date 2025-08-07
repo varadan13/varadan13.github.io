@@ -1,0 +1,5 @@
+*scratch*
+venv/ 
+.env
+input.pdf
+output.md
