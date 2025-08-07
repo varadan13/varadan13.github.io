@@ -1,24 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="./public/favicon.ico" />
-    <title>Varadan13</title>
-    <meta name="description" content="Your blog post description here" />
-    <meta
-      name="keywords"
-      content="Personal blog of Aneesh Varadan a web dev based out of Bangalore India."
-    />
-    <meta name="author" content="Aneesh Varadan" />
-    <meta name="robots" content="index, follow" />
-    <script src="https://unpkg.com/mithril/mithril.js"></script>
-  </head>
-
-  <body>
-    <voice-player
-      title="Decoding China — the lessons for a vulnerable India By Sashi Tharoor"
-      text="The exodus of over 300 Chinese
+The exodus of over 300 Chinese
 engineers from Foxconn’s pivotal
 iPhone 17 manufacturing facilities in
 Tamil Nadu and Karnataka — a recent
@@ -217,8 +197,4 @@ our own dependence. If India genuinely harbours
 the ambition to “compete” on the global stage, it
 needs a laser-like focus on its own foundational
 development. That is what China’s behaviour has
-taught India: The onus is on us Indians."
-    ></voice-player>
-  </body>
-  <script src="voice-player.js"></script>
-</html>
+taught India: The onus is on us Indians.
