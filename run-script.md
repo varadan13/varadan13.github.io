@@ -1,0 +1,1 @@
+npx terser data.js -o data.min.js -c

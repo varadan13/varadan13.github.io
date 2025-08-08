@@ -12,20 +12,23 @@
     />
     <meta name="author" content="Aneesh Varadan" />
     <meta name="robots" content="index, follow" />
+    <script src="data.min.js"></script>
     <script src="https://unpkg.com/mithril/mithril.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <script src="data.js" defer></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+      defer
+    ></script>
     <script src="voice-player.js" defer></script>
   </head>
-
   <body>
-    <div x-data="{ editorials: window.editorial_data }">
+    <div x-data="{ editorials: [...window.editorial_data] }">
       <template x-for="editorial in editorials" :key="editorial.title">
-        <!-- <voice-player
-          x-bind:title="editorial.title"
-          x-bind:text="editorial.text"
-        ></voice-player> -->
-        <div>1</div>
+        <div>
+          <voice-player
+            x-bind:title="editorial.title"
+            x-bind:text="editorial.text"
+          ></voice-player>
+        </div>
       </template>
     </div>
   </body>
