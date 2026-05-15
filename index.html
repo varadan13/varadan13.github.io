@@ -3,205 +3,184 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Minimal Blog</title>
+  <title>Home</title>
 
   <style>
+    /* Mobile-first layout only */
+    
     * {
       box-sizing: border-box;
     }
 
-    :root {
-      --bg: #f5f5f5;
-      --card: #ffffff;
-      --text: #222222;
-      --muted: #666666;
-      --border: #e5e5e5;
-      --accent: #111111;
-      --code-bg: #f0f0f0;
+    html {
+      font-size: 16px;
     }
 
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      padding: 1rem;
+      background: #f5f5f5;
       line-height: 1.7;
-      padding: 16px;
+      color: #1a1a1a;
     }
 
     .container {
-      max-width: 760px;
+      width: 100%;
+      max-width: 900px;
       margin: 0 auto;
-    }
-
-    header {
-      margin-bottom: 40px;
-    }
-
-    .site-title {
-      margin: 0;
-      font-size: 2rem;
-      line-height: 1.2;
-    }
-
-    .site-description {
-      color: var(--muted);
-      margin-top: 8px;
-      font-size: 1rem;
-    }
-
-    article {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 24px;
-    }
-
-    h1, h2, h3 {
-      line-height: 1.3;
-      margin-top: 32px;
-      margin-bottom: 16px;
+      background: white;
+      padding: 1.25rem 1.125rem;
+      overflow-wrap: break-word;
     }
 
     h1 {
-      font-size: 2rem;
+      font-size: 1.75rem;
+      line-height: 1.3;
       margin-top: 0;
     }
 
     h2 {
-      font-size: 1.5rem;
+      font-size: 1.35rem;
+      line-height: 1.3;
+      margin-top: 2rem;
     }
 
-    p {
-      margin: 16px 0;
-      overflow-wrap: break-word;
+    h3 {
+      font-size: 1.1rem;
+      margin-top: 1.5rem;
     }
 
-    img {
-      width: 100%;
-      border-radius: 10px;
-      display: block;
-      margin: 24px 0;
+    li {
+      margin-bottom: 0.4rem;
     }
 
     pre {
-      background: var(--code-bg);
-      padding: 16px;
-      border-radius: 10px;
+      max-width: 100%;
       overflow-x: auto;
-      font-size: 0.95rem;
+      padding: 0.875rem;
+      background: #f4f4f4;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
     }
 
     code {
-      font-family: Consolas, Monaco, monospace;
+      white-space: pre;
     }
 
     blockquote {
-      margin: 24px 0;
-      padding-left: 16px;
-      border-left: 4px solid var(--border);
-      color: var(--muted);
+      margin: 1rem 0;
+      padding: 0.625rem 0.875rem;
+      border-left: 4px solid #999;
+      background: #fafafa;
+      border-radius: 0 0.375rem 0.375rem 0;
+      font-style: italic;
+      color: #444;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      margin: 2rem 0;
+    }
+
+    img,
+    table {
+      max-width: 100%;
+    }
+
+    nav {
+      margin-top: 1.5rem;
+    }
+
+    nav ul {
+      padding-left: 1.25rem;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-logo {
+      height: 2.5rem;
+      width: auto;
+    }
+
+    header nav {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    header nav a {
+      text-decoration: underline;
+      color: #1a1a1a;
+      font-size: 0.85rem;
+      font-weight: 600;
     }
 
     footer {
-      margin-top: 40px;
-      color: var(--muted);
-      font-size: 0.95rem;
       text-align: center;
+      padding: 1.5rem 1rem;
+      font-size: 0.75rem;
+      color: #888;
     }
 
-    @media (max-width: 600px) {
+    @media (min-width: 768px) {
+      html {
+        font-size: 16px;
+      }
+
       body {
-        padding: 12px;
+        padding: 1.78rem;
       }
 
-      article {
-        padding: 18px;
-      }
-
-      h1 {
-        font-size: 1.7rem;
-      }
-
-      h2 {
-        font-size: 1.3rem;
-      }
-
-      pre {
-        font-size: 0.85rem;
+      .container {
+        padding: 2.22rem;
       }
     }
   </style>
 </head>
+
 <body>
+
+  <header>
+    <a href="/"><img src="/assets/header-image.jpg" alt="Kravein" class="header-logo" /></a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/articles.html">Articles</a>
+    </nav>
+  </header>
 
   <div class="container">
 
-    <header>
-      <h1 class="site-title">Minimal Blog</h1>
-      <p class="site-description">
-        Simple, readable, mobile-friendly blogging layout.
-      </p>
-    </header>
+    <h1>Welcome to <u>varadan13.github.io</u></h1>
 
-    <article>
-
-      <h1>Building Clean Web Interfaces</h1>
-
-      <p>
-        Good design is mostly about readability. A clean layout, comfortable
-        spacing, and responsive typography make content easier to consume on
-        both desktop and mobile devices.
-      </p>
-
-      <img
-        src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1200&auto=format&fit=crop"
-        alt="Laptop workspace"
-      />
-
-      <h2>Why Minimal Layouts Work</h2>
-
-      <p>
-        Minimal interfaces reduce cognitive load. Readers focus on the content
-        instead of fighting visual clutter.
-      </p>
-
-      <blockquote>
-        Simplicity is not the absence of features — it is clarity of purpose.
-      </blockquote>
-
-      <p>
-        This template uses:
-      </p>
-
+    <nav>
       <ul>
-        <li>Responsive width</li>
-        <li>Readable typography</li>
-        <li>Mobile-first spacing</li>
-        <li>Horizontal scrolling for code blocks</li>
+        <li>
+          <a href="/about.html">About Me</a>
+        </li>
+        <li>
+          <a href="/articles.html">Articles</a>
+        </li>
       </ul>
-
-      <h2>Example Code Block</h2>
-
-      <pre><code>const greet = (name) => {
-  return `Hello ${name}`;
-};
-
-console.log(greet("World"));</code></pre>
-
-      <p>
-        The <code>pre</code> block scrolls horizontally on smaller screens
-        instead of overflowing the page.
-      </p>
-
-    </article>
-
-    <footer>
-      © 2026 Minimal Blog
-    </footer>
+    </nav>
 
   </div>
 
+  <footer>
+    <p>&copy; <script>document.write(new Date().getFullYear())</script> Aneesh R. All rights reserved.</p>
+  </footer>
+
 </body>
 </html>
+
