@@ -1,0 +1,304 @@
+  <div class="container">
+
+    <h1>AWS CodePipeline Cross-Account Lambda Invoke Explained</h1>
+
+    <p>You have two AWS accounts:</p>
+
+    <ul>
+      <li><strong>tools-account</strong> &rarr; where CodePipeline exists</li>
+      <li><strong>dev-account</strong> &rarr; where the Lambda function exists</li>
+    </ul>
+
+    <p>Your goal is:</p>
+
+    <blockquote>
+      "CodePipeline in tools-account should run a Lambda function inside dev-account, wait for the Lambda to finish, and then either continue or stop the pipeline."
+    </blockquote>
+
+    <p>
+      Since the Lambda is in another AWS account, CodePipeline cannot directly control it automatically. AWS solves this using:
+    </p>
+
+    <ul>
+      <li>a cross-account IAM Role</li>
+      <li>temporary permissions</li>
+      <li>a CodePipeline Job Worker pattern</li>
+    </ul>
+
+    <p>The important part is:</p>
+
+    <blockquote>
+      The Lambda must explicitly tell CodePipeline whether the job succeeded or failed.
+    </blockquote>
+
+    <p>Without that callback, the pipeline does not properly know the final result.</p>
+
+    <hr />
+
+    <h2>Step 1 &mdash; Lambda Exists in Dev Account</h2>
+
+    <p>Inside the dev-account, you create a Lambda function.</p>
+
+    <p>Example:</p>
+
+    <pre><code>import boto3
+
+codepipeline = boto3.client('codepipeline')
+
+def lambda_handler(event, context):
+
+    job_id = event['CodePipeline.job']['id']
+
+    try:
+        print("Running validation")
+
+        # your deployment validation logic here
+
+        codepipeline.put_job_success_result(
+            jobId=job_id
+        )
+
+    except Exception as e:
+
+        codepipeline.put_job_failure_result(
+            jobId=job_id,
+            failureDetails={
+                'type': 'JobFailed',
+                'message': str(e)
+            }
+        )
+
+        raise</code></pre>
+
+    <p>This Lambda can do things like:</p>
+
+    <ul>
+      <li>validate deployment</li>
+      <li>check ECS health</li>
+      <li>verify API status</li>
+      <li>run smoke tests</li>
+      <li>check CloudFront invalidation</li>
+    </ul>
+
+    <hr />
+
+    <h2>Why <code>put_job_success_result()</code> Is Important</h2>
+
+    <p>This is the key idea.</p>
+
+    <p>CodePipeline is not sitting inside the dev-account watching the Lambda directly.</p>
+
+    <p>Instead:</p>
+
+    <ol>
+      <li>Pipeline sends a job</li>
+      <li>Lambda receives the job</li>
+      <li>Lambda must call back and say:</li>
+    </ol>
+
+    <ul>
+      <li>"Job succeeded"</li>
+      <li>or "Job failed"</li>
+    </ul>
+
+    <p>That callback is:</p>
+
+    <pre><code>codepipeline.put_job_success_result()</code></pre>
+
+    <p>or</p>
+
+    <pre><code>codepipeline.put_job_failure_result()</code></pre>
+
+    <p>Without this callback:</p>
+
+    <ul>
+      <li>pipeline waits</li>
+      <li>eventually times out</li>
+      <li>stage fails</li>
+    </ul>
+
+    <hr />
+
+    <h2>Step 2 &mdash; Create Cross-Account Role in Dev Account</h2>
+
+    <p>Now create an IAM Role inside the dev-account.</p>
+
+    <p>This role says:</p>
+
+    <blockquote>
+      "I trust the tools-account pipeline."
+    </blockquote>
+
+    <p>This is called a trust policy.</p>
+
+    <p>Example:</p>
+
+    <pre><code>DevAccountCodePipelineRole:
+  Type: AWS::IAM::Role
+  Properties:
+    RoleName: DevAccount-CodePipeline-InvokeRole
+
+    AssumeRolePolicyDocument:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::&lt;TOOLS_ACCOUNT_ID&gt;:root
+          Action: sts:AssumeRole</code></pre>
+
+    <p>This allows tools-account to temporarily become this role.</p>
+
+    <hr />
+
+    <h2>Step 3 &mdash; Give the Role Permission to Invoke Lambda</h2>
+
+    <p>Now attach permissions to that role:</p>
+
+    <pre><code>Policies:
+  - PolicyName: InvokeLambdaPolicy
+    PolicyDocument:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource:
+            - arn:aws:lambda:us-east-1:&lt;DEV_ACCOUNT_ID&gt;:function:MyFunction</code></pre>
+
+    <p>This says:</p>
+
+    <blockquote>
+      "This role can invoke the Lambda."
+    </blockquote>
+
+    <hr />
+
+    <h2>Step 4 &mdash; Allow Lambda to Talk Back to CodePipeline</h2>
+
+    <p>The Lambda also needs permission to send success/failure results back to CodePipeline.</p>
+
+    <p>Example:</p>
+
+    <pre><code>- Effect: Allow
+  Action:
+    - codepipeline:PutJobSuccessResult
+    - codepipeline:PutJobFailureResult
+  Resource: "*"</code></pre>
+
+    <p>Without this:</p>
+
+    <ul>
+      <li>Lambda runs</li>
+      <li>but cannot report result</li>
+      <li>pipeline hangs or fails</li>
+    </ul>
+
+    <hr />
+
+    <h2>Step 5 &mdash; Allow CodePipeline to Assume the Role</h2>
+
+    <p>Now in the tools-account, the pipeline execution role needs permission to assume the dev-account role.</p>
+
+    <p>Example:</p>
+
+    <pre><code>- Effect: Allow
+  Action:
+    - sts:AssumeRole
+  Resource:
+    - arn:aws:iam::&lt;DEV_ACCOUNT_ID&gt;:role/DevAccount-CodePipeline-InvokeRole</code></pre>
+
+    <p>
+      This is AWS security working both ways.
+    </p>
+
+    <p>
+      The dev-account must trust the tools-account, and the tools-account must also be allowed to assume the role.
+    </p>
+
+    <hr />
+
+    <h2>Step 6 &mdash; Configure CodePipeline</h2>
+
+    <p>Inside the pipeline stage:</p>
+
+    <pre><code>- Name: InvokeValidationLambda
+  Actions:
+    - Name: RunValidation
+      ActionTypeId:
+        Category: Invoke
+        Owner: AWS
+        Provider: Lambda
+        Version: '1'
+
+      Configuration:
+        FunctionName: MyFunction
+
+      RoleArn: arn:aws:iam::&lt;DEV_ACCOUNT_ID&gt;:role/DevAccount-CodePipeline-InvokeRole</code></pre>
+
+    <p>The important part is:</p>
+
+    <pre><code>RoleArn:</code></pre>
+
+    <p>This tells AWS:</p>
+
+    <blockquote>
+      "Before invoking Lambda, temporarily become this role in the dev-account."
+    </blockquote>
+
+    <hr />
+
+    <h2>What Actually Happens During Execution</h2>
+
+    <p>When pipeline reaches this stage:</p>
+
+    <ol>
+      <li>CodePipeline starts the job</li>
+      <li>It assumes the cross-account role</li>
+      <li>That role invokes the Lambda</li>
+      <li>Lambda receives a CodePipeline job event</li>
+      <li>Lambda performs validation/checks</li>
+      <li>Lambda explicitly reports:</li>
+    </ol>
+
+    <ul>
+      <li>success</li>
+      <li>or failure</li>
+    </ul>
+
+    <ol start="7">
+      <li>Pipeline either continues or terminates</li>
+    </ol>
+
+    <hr />
+
+    <h2>If Lambda Succeeds</h2>
+
+    <p>Example:</p>
+
+    <pre><code>codepipeline.put_job_success_result(
+    jobId=job_id
+)</code></pre>
+
+    <p>Pipeline stage becomes successful.</p>
+
+    <p>Deployment continues.</p>
+
+    <hr />
+
+    <h2>If Lambda Fails</h2>
+
+    <p>Example:</p>
+
+    <pre><code>codepipeline.put_job_failure_result(
+    jobId=job_id,
+    failureDetails={
+        'type': 'JobFailed',
+        'message': 'Validation failed'
+    }
+)</code></pre>
+
+    <p>Pipeline immediately stops.</p>
+
+    <p>Deployment terminates.</p>
+
+  </div>

@@ -1,0 +1,331 @@
+<div class="container">
+  <h1>AWS Cross-Account S3 Access with CodeBuild Explained</h1>
+
+  <p>Think of AWS accounts like <strong>two different houses</strong>:</p>
+
+  <ul>
+    <li><strong>tools-account</strong> = the house where the builder works</li>
+    <li>
+      <strong>dev-account</strong> = the house where the storage room (S3
+      bucket) exists
+    </li>
+  </ul>
+
+  <p>
+    Your CodeBuild project lives in the <strong>tools-account</strong>, but it
+    needs to put files into an S3 bucket inside the
+    <strong>dev-account</strong>.
+  </p>
+
+  <p>By default, AWS accounts do <strong>NOT trust each other</strong>.</p>
+
+  <p>So you need:</p>
+
+  <ol>
+    <li>
+      Someone in tools-account who is allowed to act (<strong>IAM Role</strong>)
+    </li>
+    <li>
+      Permission from dev-account saying "I allow that external role to enter my
+      bucket" (<strong>Bucket Policy</strong>)
+    </li>
+  </ol>
+
+  <hr />
+
+  <h2>Step-by-step flow</h2>
+
+  <hr />
+
+  <h2>1. CodeBuild service starts</h2>
+
+  <p>AWS CodeBuild itself is just a service.</p>
+
+  <p>It needs an identity to act as.</p>
+
+  <p>That identity is:</p>
+
+  <pre><code>CodeBuildRole</code></pre>
+
+  <p>This is why you have this trust relationship:</p>
+
+  <pre><code>{
+  "Effect": "Allow",
+  "Principal": {
+      "Service": "codebuild.amazonaws.com"
+  },
+  "Action": "sts:AssumeRole"
+}</code></pre>
+
+  <p>This means:</p>
+
+  <blockquote>
+    "Hey AWS, the CodeBuild service is allowed to temporarily become this role."
+  </blockquote>
+
+  <p>Without this trust policy:</p>
+
+  <ul>
+    <li>&#10060; CodeBuild cannot use the role</li>
+    <li>&#10060; Build starts fail</li>
+  </ul>
+
+  <hr />
+
+  <h2>2. CodeBuild "wears" the role</h2>
+
+  <p>When the build starts:</p>
+
+  <ul>
+    <li>CodeBuild asks AWS STS:</li>
+  </ul>
+
+  <blockquote>"Can I assume CodeBuildRole?"</blockquote>
+
+  <p>AWS checks the trust relationship.</p>
+
+  <p>If allowed:</p>
+
+  <p>&#10003; AWS gives temporary credentials</p>
+
+  <p>Now CodeBuild is effectively acting as:</p>
+
+  <pre><code>arn:aws:iam::&lt;tools-account-id&gt;:role/CodeBuildRole</code></pre>
+
+  <hr />
+
+  <h2>3. CodeBuild tries to access S3 bucket in another account</h2>
+
+  <p>Now CodeBuild tries:</p>
+
+  <pre><code>aws s3 sync ...</code></pre>
+
+  <p>or</p>
+
+  <pre><code>PutObject
+GetObject</code></pre>
+
+  <p>AWS now checks <strong>TWO things</strong>:</p>
+
+  <hr />
+
+  <h2>First check &rarr; IAM Role permissions (tools-account)</h2>
+
+  <p>AWS checks:</p>
+
+  <blockquote>"Does CodeBuildRole itself allow these S3 actions?"</blockquote>
+
+  <p>Your role policy says:</p>
+
+  <pre><code>{
+  "Action": [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject"
+  ],
+  "Resource": [
+      "arn:aws:s3:::bucket",
+      "arn:aws:s3:::bucket/*"
+  ]
+}</code></pre>
+
+  <p>So:</p>
+
+  <p>&#10003; The role IS ALLOWED to attempt these actions.</p>
+
+  <p>But that's not enough yet.</p>
+
+  <hr />
+
+  <h2>Second check &rarr; Bucket policy (dev-account)</h2>
+
+  <p>Now AWS asks the bucket owner:</p>
+
+  <blockquote>
+    "Do YOU allow this external role from another account?"
+  </blockquote>
+
+  <p>That is your bucket policy:</p>
+
+  <pre><code>{
+  "Principal": {
+      "AWS": "arn:aws:iam::&lt;tools-account-id&gt;:role/CodeBuildRole"
+  }
+}</code></pre>
+
+  <p>This means:</p>
+
+  <blockquote>
+    "I, the bucket owner, trust this role from the tools-account."
+  </blockquote>
+
+  <p>Now both sides agree:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Side</th>
+        <th>Says</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>IAM Role</td>
+        <td>"I am allowed to access bucket"</td>
+      </tr>
+      <tr>
+        <td>Bucket</td>
+        <td>"I allow this external role"</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>So access succeeds.</p>
+
+  <hr />
+
+  <h2>SUPER IMPORTANT CONCEPT</h2>
+
+  <p>For cross-account access:</p>
+
+  <p>You usually need permission from <strong>BOTH SIDES</strong>.</p>
+
+  <p>Think of it like entering a private apartment:</p>
+
+  <ul>
+    <li>Your ID card says you're allowed to visit</li>
+    <li>Apartment security also says you're allowed in</li>
+  </ul>
+
+  <p>Both must approve.</p>
+
+  <hr />
+
+  <h2>Why is bucket policy necessary?</h2>
+
+  <p>Because the bucket is in <strong>ANOTHER AWS account</strong>.</p>
+
+  <p>Without bucket policy:</p>
+
+  <ul>
+    <li>The role may say:</li>
+  </ul>
+
+  <blockquote>"I have permission to access the bucket"</blockquote>
+
+  <p>BUT...</p>
+
+  <p>The bucket owner says:</p>
+
+  <blockquote>"I never allowed you."</blockquote>
+
+  <p>So AWS denies access.</p>
+
+  <hr />
+
+  <h2>What happens if bucket policy is removed?</h2>
+
+  <p>Even though CodeBuildRole has:</p>
+
+  <pre><code>s3:GetObject
+s3:PutObject</code></pre>
+
+  <p>the request fails with:</p>
+
+  <pre><code>AccessDenied</code></pre>
+
+  <p>
+    because cross-account resource access requires the resource owner to allow
+    it.
+  </p>
+
+  <hr />
+
+  <h2>Easy analogy</h2>
+
+  <p>Imagine:</p>
+
+  <ul>
+    <li>Your school ID says:</li>
+  </ul>
+
+  <blockquote>"Can enter library"</blockquote>
+
+  <p>But the library belongs to another school.</p>
+
+  <p>That school must ALSO say:</p>
+
+  <blockquote>"We allow students from your school."</blockquote>
+
+  <p>That second permission is the bucket policy.</p>
+
+  <hr />
+
+  <h2>Why is CodeBuildRole necessary?</h2>
+
+  <p>Because CodeBuild service itself has no permissions.</p>
+
+  <p>AWS services don't magically get admin access.</p>
+
+  <p>The role is the identity CodeBuild uses.</p>
+
+  <hr />
+
+  <h2>What happens if CodeBuildRole doesn't exist?</h2>
+
+  <p>Then CodeBuild has:</p>
+
+  <ul>
+    <li>&#10060; no AWS credentials</li>
+    <li>&#10060; no permissions</li>
+    <li>&#10060; cannot call S3 APIs</li>
+  </ul>
+
+  <p>Build fails immediately.</p>
+
+  <hr />
+
+  <h2>Why both trust policy and permissions policy?</h2>
+
+  <p>These are <strong>DIFFERENT things</strong>.</p>
+
+  <hr />
+
+  <h3>Trust Policy = "Who can become me?"</h3>
+
+  <pre><code>{
+  "Principal": {
+      "Service": "codebuild.amazonaws.com"
+  }
+}</code></pre>
+
+  <p>This answers:</p>
+
+  <blockquote>"Who is allowed to assume this role?"</blockquote>
+
+  <p>Answer:</p>
+
+  <p>&#10003; CodeBuild service</p>
+
+  <hr />
+
+  <h3>Permissions Policy = "What can I do?"</h3>
+
+  <pre><code>{
+  "Action": [
+      "s3:PutObject"
+  ]
+}</code></pre>
+
+  <p>This answers:</p>
+
+  <blockquote>
+    "Once someone becomes this role, what are they allowed to do?"
+  </blockquote>
+
+  <p>Answer:</p>
+
+  <p>&#10003; Access S3 bucket</p>
+
+  <hr />
+</div>

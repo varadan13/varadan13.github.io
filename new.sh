@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage:
+#   ./new.sh article "AWS S3 Lifecycle Rules Explained"
+#   ./new.sh post    "My Post Title"
+
+usage() {
+  echo "Usage: $0 <article|post> \"Title\"" >&2
+  exit 1
+}
+
+[[ $# -lt 2 ]] && usage
+
+TYPE="$1"; shift
+TITLE="$*"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+case "$TYPE" in
+  article) SHELL_DIR="articles" ;;
+  post)    SHELL_DIR="posts"    ;;
+  *)       echo "Unknown type: $TYPE (use 'article' or 'post')" >&2; exit 1 ;;
+esac
+
+# Title -> kebab-case slug
+slug=$(echo "$TITLE" \
+  | tr '[:upper:]' '[:lower:]' \
+  | sed 's/[^a-z0-9 -]//g' \
+  | sed 's/  */ /g' \
+  | sed 's/ /-/g' \
+  | sed 's/--*/-/g' \
+  | sed 's/^-//;s/-$//')
+
+SHELL_FILE="$ROOT/$SHELL_DIR/$slug.html"
+CONTENT_FILE="$ROOT/contents/$slug.html"
+
+[[ -f "$SHELL_FILE"   ]] && { echo "Already exists: $SHELL_DIR/$slug.html" >&2; exit 1; }
+[[ -f "$CONTENT_FILE" ]] && { echo "Already exists: contents/$slug.html"   >&2; exit 1; }
+
+# ── shell file ───────────────────────────────────────────────────────────────
+cat > "$SHELL_FILE" <<HTML
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>$TITLE</title>
+
+    <style>
+      * { box-sizing: border-box; }
+
+      html { font-size: 16px; }
+
+      body {
+        margin: 0;
+        padding: 1rem;
+        min-height: 100vh;
+        background: #6f88a8;
+        color: #111;
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.7;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+        background: #efefec;
+        padding: 1.5rem 1.25rem;
+        border-radius: 0;
+        overflow-wrap: break-word;
+      }
+
+      h1, h2, h3 {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-weight: 700;
+        color: #111;
+      }
+
+      h1 { font-size: 2rem; line-height: 1.2; margin-top: 0; margin-bottom: 2rem; }
+      h2 { font-size: 1.4rem; line-height: 1.3; margin-top: 2rem; }
+      h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+
+      p { margin-bottom: 1rem; }
+
+      ul, ol { padding-left: 1.5rem; }
+      li { margin-bottom: 0.7rem; }
+
+      a { color: #0000ee; text-decoration: underline; }
+      a:visited { color: #551a8b; }
+
+      pre {
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 0.875rem;
+        background: #f4f4f4;
+        border: 1px solid #ccc;
+        border-radius: 0;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      code {
+        white-space: pre;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      blockquote {
+        margin: 1rem 0;
+        padding: 0.75rem 1rem;
+        border-left: 4px solid #666;
+        background: #f7f7f7;
+        border-radius: 0;
+        font-style: italic;
+        color: #333;
+      }
+
+      hr { border: none; border-top: 1px solid #bbb; margin: 2rem 0; }
+      img, table { max-width: 100%; }
+
+      header {
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+        background: #efefec;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #cfcfcf;
+      }
+
+      .header-logo { height: 2.5rem; width: auto; }
+      header nav { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+      header nav a { color: #111; font-size: 0.95rem; font-weight: 700; text-decoration: underline; }
+
+      footer { text-align: center; padding: 1.5rem 1rem; font-size: 0.8rem; color: #111; }
+
+      @media (min-width: 768px) {
+        body { padding: 3rem; }
+        .container { padding: 2.5rem; }
+        h1 { font-size: 3rem; }
+      }
+    </style>
+
+  </head>
+
+  <body>
+    <div data-fx-mount fx-action="../layout/header.html" fx-swap="outerHTML"></div>
+
+    <div
+      data-fx-mount
+      id="container-slot"
+      fx-action="../contents/$slug.html"
+      fx-swap="innerHTML"
+    ></div>
+
+    <div data-fx-mount fx-action="../layout/footer.html" fx-swap="outerHTML"></div>
+
+    <script>
+      const slots = Array.from(document.querySelectorAll("[data-fx-mount]"));
+
+      Promise.all(
+        slots.map(el => fetch(el.getAttribute("fx-action")).then(r => r.text()))
+      )
+        .then(htmls => new Promise(resolve => setTimeout(() => resolve(htmls), 5)))
+        .then(htmls => {
+          slots.forEach((el, i) => {
+            const swap = el.getAttribute("fx-swap") || "outerHTML";
+            if (swap === "outerHTML") el.outerHTML = htmls[i];
+            else el.innerHTML = htmls[i];
+          });
+        });
+    </script>
+  </body>
+</html>
+HTML
+
+# ── content stub ─────────────────────────────────────────────────────────────
+cat > "$CONTENT_FILE" <<HTML
+<div class="container">
+  <h1>$TITLE</h1>
+
+  <p></p>
+</div>
+HTML
+
+echo ""
+echo "Created:"
+echo "  $SHELL_DIR/$slug.html"
+echo "  contents/$slug.html"
+echo ""
+echo "Next: add your content to contents/$slug.html"
