@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Why Use CSS clamp()?</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,200..800;1,200..800&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+    }
+
+    body {
+      margin: 0;
+      padding: 1rem;
+      background: #f5f5f5;
+      line-height: 1.7;
+      color: #1a1a1a;
+      font-family: 'Karla', sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 1.25rem 1.125rem;
+      border-radius: 0.5rem;
+      overflow-wrap: break-word;
+    }
+
+    h1, h2, h3 {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      line-height: 1.3;
+      margin-top: 0;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      line-height: 1.3;
+      margin-top: 2rem;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      margin-top: 1.5rem;
+    }
+
+    ul, ol {
+      padding-left: 1.4rem;
+    }
+
+    li {
+      margin-bottom: 0.4rem;
+    }
+
+    pre {
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 0.875rem;
+      background: #f4f4f4;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    code {
+      white-space: pre;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    blockquote {
+      margin: 1rem 0;
+      padding: 0.625rem 0.875rem;
+      border-left: 4px solid #999;
+      background: #fafafa;
+      border-radius: 0 0.375rem 0.375rem 0;
+      font-style: italic;
+      color: #444;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      margin: 2rem 0;
+    }
+
+    img, table {
+      max-width: 100%;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-logo {
+      height: 2.5rem;
+      width: auto;
+    }
+
+    header nav {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    header nav a {
+      text-decoration: underline;
+      color: #1a1a1a;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    @media (min-width: 768px) {
+      html {
+        font-size: 16px;
+      }
+
+      body {
+        padding: 1.78rem;
+      }
+
+      .container {
+        padding: 2.22rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <a href="/"><img src="/assets/header-image.jpg" alt="Kravein" class="header-logo" /></a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/articles.html">Articles</a>
+    </nav>
+  </header>
+
+  <div class="container">
+
+    <h1>Why Use CSS clamp()?</h1>
+
+    <p>
+      Imagine you are designing a sign for your school.
+    </p>
+
+    <p>
+      On a big billboard it should be huge.
+      On a small poster it should be smaller.
+      But never so small you cannot read it.
+    </p>
+
+    <p>
+      That is exactly what <code>clamp()</code> does for text and sizes on a webpage.
+    </p>
+
+    <hr />
+
+    <h2>The Problem Without clamp()</h2>
+
+    <p>
+      Before <code>clamp()</code>, developers had two choices.
+    </p>
+
+    <h3>Choice 1 — Fixed size</h3>
+
+    <pre><code>font-size: 2rem;</code></pre>
+
+    <p>
+      On a big screen: looks great.
+    </p>
+
+    <p>
+      On a small phone: the text is huge, spills off screen, looks broken.
+    </p>
+
+    <h3>Choice 2 — Media queries</h3>
+
+    <pre><code>font-size: 1rem;
+
+@media (min-width: 768px) {
+  font-size: 1.5rem;
+}
+
+@media (min-width: 1200px) {
+  font-size: 2rem;
+}</code></pre>
+
+    <p>
+      This works, but you have to write three separate rules just for one font size.
+    </p>
+
+    <p>
+      And the text still jumps suddenly at each breakpoint instead of smoothly growing.
+    </p>
+
+    <p>
+      It is like a volume knob that only has three settings: quiet, medium, loud.
+      No smooth dial in between.
+    </p>
+
+    <hr />
+
+    <h2>What clamp() Does</h2>
+
+    <p>
+      <code>clamp()</code> takes three values:
+    </p>
+
+    <pre><code>clamp(minimum, preferred, maximum)</code></pre>
+
+    <p>Think of it like this:</p>
+
+    <ul>
+      <li><strong>minimum</strong> &rarr; "never go smaller than this"</li>
+      <li><strong>preferred</strong> &rarr; "ideally use this, which can grow or shrink with screen size"</li>
+      <li><strong>maximum</strong> &rarr; "never go bigger than this"</li>
+    </ul>
+
+    <p>
+      CSS picks the preferred value, but keeps it between the minimum and maximum.
+    </p>
+
+    <hr />
+
+    <h2>A Real Example</h2>
+
+    <pre><code>font-size: clamp(1rem, 5vw, 2rem);</code></pre>
+
+    <p>Here:</p>
+
+    <ul>
+      <li><code>1rem</code> &rarr; smallest it will ever be (about 16px)</li>
+      <li><code>5vw</code> &rarr; 5% of the screen width — grows as screen gets wider</li>
+      <li><code>2rem</code> &rarr; biggest it will ever be (about 32px)</li>
+    </ul>
+
+    <h3>What happens on different screens</h3>
+
+    <p>On a phone at 320px wide:</p>
+
+    <pre><code>5vw = 5% of 320px = 16px = 1rem
+→ uses minimum: 1rem</code></pre>
+
+    <p>On a tablet at 600px wide:</p>
+
+    <pre><code>5vw = 5% of 600px = 30px = 1.875rem
+→ uses preferred: 1.875rem</code></pre>
+
+    <p>On a desktop at 1400px wide:</p>
+
+    <pre><code>5vw = 5% of 1400px = 70px
+→ too big, capped at maximum: 2rem</code></pre>
+
+    <p>
+      The font slides smoothly between phone and desktop, and you wrote only one line.
+    </p>
+
+    <hr />
+
+    <h2>The Volume Knob Analogy</h2>
+
+    <p>
+      Think of <code>clamp()</code> like a volume knob with limiters:
+    </p>
+
+    <ul>
+      <li>You set a minimum volume: it will never go quieter than whisper level</li>
+      <li>You set it to auto-adjust based on the room size</li>
+      <li>You set a maximum volume: it will never blow your ears out</li>
+    </ul>
+
+    <p>
+      Between those two limits it adjusts itself automatically.
+      You do not touch it again.
+    </p>
+
+    <hr />
+
+    <h2>The Backpack Analogy</h2>
+
+    <p>
+      Imagine your school bag.
+    </p>
+
+    <ul>
+      <li>It must always fit at least your lunchbox (minimum)</li>
+      <li>Ideally it fills up based on how much homework you have (preferred)</li>
+      <li>But it cannot grow bigger than what fits in your locker (maximum)</li>
+    </ul>
+
+    <p>
+      <code>clamp()</code> works the same way for sizes.
+    </p>
+
+    <hr />
+
+    <h2>Why Not Just Use vw?</h2>
+
+    <p>You might ask:</p>
+
+    <blockquote>
+      "Why not just write <code>font-size: 5vw</code>?"
+    </blockquote>
+
+    <p>
+      Because <code>vw</code> alone has no limits.
+    </p>
+
+    <p>On a tiny 200px screen:</p>
+
+    <pre><code>5vw = 10px</code></pre>
+
+    <p>
+      That is unreadably tiny.
+    </p>
+
+    <p>On a massive 4K monitor at 3840px wide:</p>
+
+    <pre><code>5vw = 192px</code></pre>
+
+    <p>
+      That is absurdly large.
+    </p>
+
+    <p>
+      <code>clamp()</code> puts a floor and a ceiling on it, so the size always stays sensible.
+    </p>
+
+    <hr />
+
+    <h2>Where clamp() Is Useful</h2>
+
+    <ul>
+      <li>Headings that should be big on desktop but readable on mobile</li>
+      <li>Padding and spacing that should shrink on small screens</li>
+      <li>Container widths that scale between a minimum and maximum</li>
+      <li>Any size that needs to feel right on every screen without writing multiple rules</li>
+    </ul>
+
+    <hr />
+
+    <h2>How clamp() Decides Which Value to Use</h2>
+
+    <p>
+      CSS follows a simple three-step decision every time it reads <code>clamp()</code>.
+    </p>
+
+    <p>Take this example:</p>
+
+    <pre><code>font-size: clamp(1rem, 5vw, 2rem);</code></pre>
+
+    <h3>Step 1 — Calculate the preferred value</h3>
+
+    <p>
+      CSS first works out what the preferred value actually is right now.
+    </p>
+
+    <p>
+      <code>5vw</code> is not a fixed number. It depends on the current screen width.
+      CSS multiplies it out:
+    </p>
+
+    <pre><code>screen is 400px wide
+→ 5vw = 5% of 400px = 20px</code></pre>
+
+    <p>Now it has a real number to work with: <code>20px</code>.</p>
+
+    <h3>Step 2 — Is the preferred value smaller than the minimum?</h3>
+
+    <blockquote>
+      "Is 20px smaller than 1rem (16px)?"
+    </blockquote>
+
+    <p>No. 20px is bigger than 16px.</p>
+
+    <p>So the minimum does not apply here.</p>
+
+    <h3>Step 3 — Is the preferred value bigger than the maximum?</h3>
+
+    <blockquote>
+      "Is 20px bigger than 2rem (32px)?"
+    </blockquote>
+
+    <p>No. 20px is smaller than 32px.</p>
+
+    <p>So the maximum does not apply here either.</p>
+
+    <p>
+      The preferred value is within range, so CSS uses it:
+    </p>
+
+    <pre><code>font-size: 20px</code></pre>
+
+    <hr />
+
+    <h2>When Each Value Wins</h2>
+
+    <h3>Minimum wins</h3>
+
+    <p>Screen is very small, say 200px wide:</p>
+
+    <pre><code>5vw = 5% of 200px = 10px
+
+Is 10px smaller than minimum (16px)? YES
+→ use minimum: 16px</code></pre>
+
+    <p>
+      The preferred value tried to go below the floor, so CSS grabbed the floor instead.
+    </p>
+
+    <h3>Preferred wins</h3>
+
+    <p>Screen is 400px wide:</p>
+
+    <pre><code>5vw = 5% of 400px = 20px
+
+Is 20px smaller than minimum (16px)? No
+Is 20px bigger than maximum (32px)? No
+→ use preferred: 20px</code></pre>
+
+    <p>
+      The preferred value is comfortably between the two limits, so CSS uses it as-is.
+    </p>
+
+    <h3>Maximum wins</h3>
+
+    <p>Screen is very wide, say 1000px:</p>
+
+    <pre><code>5vw = 5% of 1000px = 50px
+
+Is 50px smaller than minimum (16px)? No
+Is 50px bigger than maximum (32px)? YES
+→ use maximum: 32px</code></pre>
+
+    <p>
+      The preferred value tried to go above the ceiling, so CSS grabbed the ceiling instead.
+    </p>
+
+    <hr />
+
+    <h2>The Referee Analogy</h2>
+
+    <p>
+      Think of <code>clamp()</code> like a referee in a game.
+    </p>
+
+    <p>
+      The preferred value is the player trying to score.
+    </p>
+
+    <ul>
+      <li>If the player goes out of bounds on the low side, the referee calls the minimum</li>
+      <li>If the player goes out of bounds on the high side, the referee calls the maximum</li>
+      <li>If the player stays in bounds, the referee does nothing and the preferred value is used</li>
+    </ul>
+
+    <p>
+      The preferred value gets to play freely, but cannot leave the field.
+    </p>
+
+    <hr />
+
+    <h2>Summary</h2>
+
+    <p>
+      Without <code>clamp()</code>:
+    </p>
+
+    <ul>
+      <li>Fixed sizes break on small screens</li>
+      <li>Media queries mean lots of extra code and sudden jumps</li>
+    </ul>
+
+    <p>
+      With <code>clamp()</code>:
+    </p>
+
+    <ul>
+      <li>One line handles everything</li>
+      <li>Size grows smoothly with screen width</li>
+      <li>Never too small to read</li>
+      <li>Never too big to fit</li>
+    </ul>
+
+    <pre><code>font-size: clamp(minimum, preferred, maximum);</code></pre>
+
+    <p>
+      Set it once. Works everywhere.
+    </p>
+
+  </div>
+
+  <footer>
+    <p>&copy; <script>document.write(new Date().getFullYear())</script> Aneesh R. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>
