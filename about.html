@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 24px;
+    }
+
+    body {
+      margin: 0;
+      padding: 0.67rem;
+      background: #f5f5f5;
+      line-height: 1.7;
+      color: #1a1a1a;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 0.83rem 0.75rem;
+      border-radius: 0.33rem;
+      overflow-wrap: break-word;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      line-height: 1.3;
+      margin-top: 0;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      line-height: 1.3;
+      margin-top: 2rem;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      margin-top: 1.5rem;
+    }
+
+    ul, ol {
+      padding-left: 1.4rem;
+    }
+
+    li {
+      margin-bottom: 0.4rem;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 0.58rem;
+      background: #f4f4f4;
+      border-radius: 0.25rem;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    code {
+      white-space: pre;
+    }
+
+    blockquote {
+      margin: 1rem 0;
+      padding: 0.42rem 0.58rem;
+      border-left: 4px solid #999;
+      background: #fafafa;
+      border-radius: 0 0.25rem 0.25rem 0;
+      font-style: italic;
+      color: #444;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      margin: 2rem 0;
+    }
+
+    img, table {
+      max-width: 100%;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-logo {
+      height: 2.5rem;
+      width: auto;
+    }
+
+    header nav {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    header nav a {
+      text-decoration: underline;
+      color: #1a1a1a;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .profile {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .profile img {
+      width: 100%;
+      max-width: 24rem;
+      height: auto;
+      border-radius: 0.33rem;
+      object-fit: cover;
+    }
+
+    .profile h1 {
+      margin-bottom: 0.2rem;
+    }
+
+    .profile p {
+      margin-top: 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    @media (min-width: 768px) {
+      html {
+        font-size: 18px;
+      }
+
+      body {
+        padding: 1.78rem;
+      }
+
+      .container {
+        padding: 2.22rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <a href="/"><img src="/assets/header-image.jpg" alt="Kravein" class="header-logo" /></a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/articles.html">Articles</a>
+    </nav>
+  </header>
+
+  <div class="container">
+
+    <div class="profile">
+      <img src="/assets/profile.jpg" alt="Aneesh R" />
+      <h1>Aneesh R</h1>
+      <p>
+        <strong>Fullstack Developer | AI Development | Vercel AI SDK | FastMCP | React | NextJS | AWS | Web Performance Optimisations | NestJS | MongoDB | NodeJS | SEO</strong><br />
+        5 years experience
+      </p>
+    </div>
+
+    <hr />
+
+    <h2>Contact</h2>
+
+    <ul>
+      <li>Location: Bangalore, Karnataka, 560057</li>
+      <li>Phone: +91 6363090385</li>
+      <li>Email: <a href="mailto:rcaesar1996@gmail.com">rcaesar1996@gmail.com</a></li>
+      <li>LinkedIn: <a href="https://www.linkedin.com/in/aneeshdata">linkedin.com/in/aneeshdata</a></li>
+      <li>GitHub: <a href="https://github.com/varadan13">github.com/varadan13</a></li>
+      <li>Blog: <a href="https://aneeshvaradan.medium.com">aneeshvaradan.medium.com</a></li>
+    </ul>
+
+    <hr />
+
+    <h2>Experience</h2>
+
+    <h3>Kravein — Fullstack Developer</h3>
+    <p><em>May 2022 – Present (3 years 7 months)</em></p>
+
+    <ul>
+      <li>Experimented with <strong>Agentic AI</strong> to create table booking within the platform as a proof of concept to explore AI capabilities.</li>
+      <li>Designed and implemented a custom logging system capturing <code>console.info</code> logs, sending them to a backend service storing data in <strong>DynamoDB</strong>.
+        <ul>
+          <li>Developed an <strong>MCP server</strong> enabling AI agents to retrieve and analyse logs via tool calls to generate reports and identify issues in problematic orders.</li>
+        </ul>
+      </li>
+      <li>Independently migrated all data from <strong>GraphCMS</strong> to <strong>MongoDB</strong> using <strong>AWS Lambda Functions</strong> exposed as <strong>GraphQL APIs</strong>.
+        <ul>
+          <li>Modelled complex relationships including security and role-based access tables.</li>
+          <li>Built a <strong>React</strong>-based admin UI to manage these relationships.</li>
+          <li>Integrated MongoDB with <strong>Amazon S3</strong> via Lambda for data synchronisation.</li>
+        </ul>
+      </li>
+      <li>Created a GraphQL API updating <strong>Firestore</strong> to dynamically reload a <strong>Flutter app</strong>.</li>
+      <li>Experimented with the <strong>Backend-for-Frontend (BFF) pattern</strong> using a Next.js API endpoint and <strong>Redis cache layer</strong> for faster data retrieval.</li>
+      <li>Simplified process flows for partial search, category deals, onboarding dashboards, and many other features.</li>
+      <li>Automated static website generation using <strong>Handlebars</strong>, <strong>jQuery</strong>, and React — all onboarded restaurants are assigned a branded static website generated from the onboarding dashboard.</li>
+      <li>Achieved a <strong>20% performance improvement</strong> in user portal pages using Dynamic Imports, Lazy Loading, and Static Rendering.</li>
+      <li>Built a NodeJS script leveraging <strong>BullMQ</strong> and <strong>ioredis</strong> to scrape data from Uber Eats for restaurant onboarding.</li>
+      <li>Built a <strong>NodeJS</strong> script for sitemap generation with over <strong>1 million unique URLs</strong>.</li>
+      <li>Maintains two React repositories bootstrapping the Admin and User portals — full ownership, end-to-end execution, bug fixes, and enhancements.</li>
+      <li>Integrated <strong>Apple Pay</strong> and <strong>Google Pay</strong> using <strong>Stripe</strong>.</li>
+    </ul>
+
+    <h3>datachai.ai — Software Engineer</h3>
+    <p><em>November 2021 – May 2022 (7 months)</em></p>
+
+    <ul>
+      <li>Built SaaS components using <strong>RemixJS</strong>, <strong>React</strong>, and <strong>Material UI</strong>.</li>
+      <li>Designed onboarding screens with <strong>Styled Components</strong>.</li>
+      <li>Documented B2B marketplace creation using <strong>Vendure</strong> (open-source eCommerce framework).</li>
+      <li>Extended <strong>Vendure APIs</strong> using <strong>NestJS</strong> and <strong>TypeScript</strong>.</li>
+    </ul>
+
+    <h3>4Labs Technologies — Software Engineer</h3>
+    <p><em>March 2021 – October 2021 (8 months)</em></p>
+
+    <ul>
+      <li>Developed admin portal for a hyperlocal delivery platform.</li>
+      <li>Implemented seller review/approval pages and order tracking.</li>
+      <li>Designed and implemented modules using <strong>React</strong>, <strong>Redux</strong>, <strong>HTML</strong>, <strong>CSS</strong>.</li>
+      <li>Created interfaces using <strong>Material UI</strong>, <strong>React Bootstrap</strong>, and custom components.</li>
+      <li>Integrated with <strong>GraphQL</strong> via <strong>Apollo Client</strong>.</li>
+    </ul>
+
+    <hr />
+
+    <h2>Education</h2>
+
+    <ul>
+      <li>
+        <strong>Jain (Deemed-to-be University)</strong><br />
+        MBA in Data Science — October 2022 – October 2024
+      </li>
+      <li>
+        <strong>Bangalore University</strong><br />
+        B.Sc. in Mathematics and Statistics — July 2015 – July 2018
+      </li>
+    </ul>
+
+    <hr />
+
+    <h2>Summary</h2>
+
+    <p>I am a person who believes in growth and loves to solve and think about real-life problems.</p>
+
+    <h3>Tools I know well</h3>
+
+    <ul>
+      <li>HTML and CSS</li>
+      <li>JavaScript</li>
+      <li>React</li>
+      <li>NextJS</li>
+      <li>GraphQL</li>
+      <li>Web performance techniques</li>
+    </ul>
+
+    <h3>Tools I understand</h3>
+
+    <ul>
+      <li>TypeScript</li>
+      <li>NestJS</li>
+      <li>Remix</li>
+      <li>Angular</li>
+      <li>Express</li>
+      <li>Python</li>
+      <li>SQL</li>
+      <li>MongoDB</li>
+      <li>NodeJS</li>
+      <li>AWS Lambda</li>
+      <li>AWS S3</li>
+      <li>AWS AppSync</li>
+      <li>AWS DynamoDB</li>
+      <li>AWS CodePipeline</li>
+      <li>AWS CloudFormation</li>
+      <li>Official MCP library</li>
+      <li>Vercel AI SDK</li>
+      <li>FastMCP</li>
+    </ul>
+
+    <pre><code>atob("VGhlIHRydXRoIGlzIHdheSBtb3JlIGRlcHJlc3NpbmcuIFRoZXkgYXJlIG5vdCBldmVuIHNtYXJ0IGVub3VnaCB0byBiZSBhcyBldmlsIGFzIHlvdSdyZSBnaXZpbmcgdGhlbSBjcmVkaXQgZm9yLg==")</code></pre>
+
+  </div>
+
+  <footer>
+    <p>&copy; <script>document.write(new Date().getFullYear())</script> Aneesh R. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>
