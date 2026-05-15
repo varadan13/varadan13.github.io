@@ -1,539 +1,269 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AWS Cross-Account S3 Access with CodeBuild Explained</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AWS Cross-Account S3 Access with CodeBuild Explained</title>
+    <meta name="description" content="A plain-English guide to accessing an S3 bucket in one AWS account from a CodeBuild project in another, using cross-account IAM roles and bucket policies." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://varadan13.github.io/articles/aws-cross-account-s3-access-codebuild-explained.html" />
+    <meta property="og:title" content="AWS Cross-Account S3 Access with CodeBuild Explained" />
+    <meta property="og:description" content="A plain-English guide to accessing an S3 bucket in one AWS account from a CodeBuild project in another, using cross-account IAM roles and bucket policies." />
+    <meta property="og:image" content="https://varadan13.github.io/assets/header-image.jpg" />
+    <meta property="og:site_name" content="varadan13.github.io" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Karla:ital,wght@0,200..800;1,200..800&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap" rel="stylesheet">
+    
+    <link rel="icon" type="image/png" href="../favicon/" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../favicon/favicon.ico" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="../favicon/apple-touch-icon.png"
+    />
+    <link rel="manifest" href="../favicon/site.webmanifest" />
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
 
-    html {
-      font-size: 16px;
-    }
+    <style>
+      * {
+        box-sizing: border-box;
+      }
 
-    body {
-      margin: 0;
-      padding: 1rem;
-      background: linear-gradient(135deg, #415a77, #778da9);
-      min-height: 100vh;
-      line-height: 1.7;
-      color: #1a1a1a;
-      font-family: 'Karla', sans-serif;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 900px;
-      margin: 0 auto;
-      background: #e0e1dd;
-      padding: 1.25rem 1.125rem;
-      border-radius: 0.5rem;
-      overflow-wrap: break-word;
-    }
-
-    h1, h2, h3 {
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    }
-
-    h1 {
-      font-size: 1.75rem;
-      line-height: 1.3;
-      margin-top: 0;
-    }
-
-    h2 {
-      font-size: 1.35rem;
-      line-height: 1.3;
-      margin-top: 2rem;
-    }
-
-    h3 {
-      font-size: 1.1rem;
-      margin-top: 1.5rem;
-    }
-
-    ul, ol {
-      padding-left: 1.4rem;
-    }
-
-    li {
-      margin-bottom: 0.4rem;
-    }
-
-    pre {
-      max-width: 100%;
-      overflow-x: auto;
-      padding: 0.875rem;
-      background: #f4f4f4;
-      border-radius: 0.375rem;
-      font-size: 0.875rem;
-      line-height: 1.6;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    }
-
-    code {
-      white-space: pre;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    }
-
-    blockquote {
-      margin: 1rem 0;
-      padding: 0.625rem 0.875rem;
-      border-left: 4px solid #999;
-      background: #fafafa;
-      border-radius: 0 0.375rem 0.375rem 0;
-      font-style: italic;
-      color: #444;
-    }
-
-    hr {
-      border: none;
-      border-top: 1px solid #e0e0e0;
-      margin: 2rem 0;
-    }
-
-    img, table {
-      max-width: 100%;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 1rem 0;
-    }
-
-    th, td {
-      border: 1px solid #e0e0e0;
-      padding: 0.5rem 0.875rem;
-      text-align: left;
-    }
-
-    th {
-      background: #f4f4f4;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 0.875rem;
-    }
-
-    header {
-      width: 100%;
-      max-width: 900px;
-      margin: 0 auto;
-      background: #e0e1dd;
-      border-bottom: 1px solid #e0e0e0;
-      padding: 0.75rem 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .header-logo {
-      height: 2.5rem;
-      width: auto;
-    }
-
-    header nav {
-      display: flex;
-      gap: 1.5rem;
-    }
-
-    header nav a {
-      text-decoration: underline;
-      color: #1a1a1a;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
-
-    footer {
-      text-align: center;
-      padding: 1.5rem 1rem;
-      font-size: 0.75rem;
-      color: #000;
-    }
-
-    @media (min-width: 768px) {
       html {
         font-size: 16px;
       }
 
       body {
-        padding: 1.78rem;
+        margin: 0;
+        padding: 1rem;
+        min-height: 100vh;
+
+        /* Early internet muted blue background */
+        background: #6f88a8;
+
+        color: #111;
+
+        /* Old-school readable serif body */
+        font-family: Georgia, "Times New Roman", serif;
+
+        line-height: 1.7;
       }
 
       .container {
-        padding: 2.22rem;
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+
+        /* Classic light gray content area */
+        background: #efefec;
+
+        padding: 1.5rem 1.25rem;
+
+        /* Remove modern card feeling */
+        border-radius: 0;
+
+        overflow-wrap: break-word;
       }
-    }
-  </style>
-</head>
 
-<body>
+      h1,
+      h2,
+      h3 {
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-  <header>
-    <a href="/"><img src="/assets/header-image.jpg" alt="Kravein" class="header-logo" /></a>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/about.html">About Me</a>
-      <a href="/posts.html">Posts</a>
-      <a href="/articles.html">Articles</a>
-    </nav>
-  </header>
+        font-weight: 700;
+        color: #111;
+      }
 
-  <div class="container">
+      h1 {
+        font-size: 2rem;
+        line-height: 1.2;
+        margin-top: 0;
+        margin-bottom: 2rem;
+      }
 
-    <h1>AWS Cross-Account S3 Access with CodeBuild Explained</h1>
+      h2 {
+        font-size: 1.4rem;
+        line-height: 1.3;
+        margin-top: 2rem;
+      }
 
-    <p>
-      Think of AWS accounts like <strong>two different houses</strong>:
-    </p>
+      h3 {
+        font-size: 1.1rem;
+        margin-top: 1.5rem;
+      }
 
-    <ul>
-      <li><strong>tools-account</strong> = the house where the builder works</li>
-      <li><strong>dev-account</strong> = the house where the storage room (S3 bucket) exists</li>
-    </ul>
+      p {
+        margin-bottom: 1rem;
+      }
 
-    <p>
-      Your CodeBuild project lives in the <strong>tools-account</strong>, but it needs to put files into an S3 bucket inside the <strong>dev-account</strong>.
-    </p>
+      ul,
+      ol {
+        padding-left: 1.5rem;
+      }
 
-    <p>
-      By default, AWS accounts do <strong>NOT trust each other</strong>.
-    </p>
+      li {
+        margin-bottom: 0.7rem;
+      }
 
-    <p>So you need:</p>
+      /* Classic blue links */
+      a {
+        color: #0000ee;
+        text-decoration: underline;
+      }
 
-    <ol>
-      <li>Someone in tools-account who is allowed to act (<strong>IAM Role</strong>)</li>
-      <li>Permission from dev-account saying "I allow that external role to enter my bucket" (<strong>Bucket Policy</strong>)</li>
-    </ol>
+      a:visited {
+        color: #551a8b;
+      }
 
-    <hr />
+      pre {
+        max-width: 100%;
+        overflow-x: auto;
 
-    <h2>Step-by-step flow</h2>
+        padding: 0.875rem;
 
-    <hr />
+        background: #f4f4f4;
 
-    <h2>1. CodeBuild service starts</h2>
+        border: 1px solid #ccc;
 
-    <p>
-      AWS CodeBuild itself is just a service.
-    </p>
+        border-radius: 0;
 
-    <p>
-      It needs an identity to act as.
-    </p>
+        font-size: 0.9rem;
+        line-height: 1.6;
 
-    <p>That identity is:</p>
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
 
-    <pre><code>CodeBuildRole</code></pre>
+      code {
+        white-space: pre;
 
-    <p>This is why you have this trust relationship:</p>
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
 
-    <pre><code>{
-  "Effect": "Allow",
-  "Principal": {
-      "Service": "codebuild.amazonaws.com"
-  },
-  "Action": "sts:AssumeRole"
-}</code></pre>
+      blockquote {
+        margin: 1rem 0;
 
-    <p>This means:</p>
+        padding: 0.75rem 1rem;
 
-    <blockquote>
-      "Hey AWS, the CodeBuild service is allowed to temporarily become this role."
-    </blockquote>
+        border-left: 4px solid #666;
 
-    <p>Without this trust policy:</p>
+        background: #f7f7f7;
 
-    <ul>
-      <li>&#10060; CodeBuild cannot use the role</li>
-      <li>&#10060; Build starts fail</li>
-    </ul>
+        border-radius: 0;
 
-    <hr />
+        font-style: italic;
 
-    <h2>2. CodeBuild "wears" the role</h2>
-
-    <p>When the build starts:</p>
-
-    <ul>
-      <li>CodeBuild asks AWS STS:</li>
-    </ul>
-
-    <blockquote>
-      "Can I assume CodeBuildRole?"
-    </blockquote>
-
-    <p>AWS checks the trust relationship.</p>
-
-    <p>If allowed:</p>
-
-    <p>&#10003; AWS gives temporary credentials</p>
-
-    <p>Now CodeBuild is effectively acting as:</p>
-
-    <pre><code>arn:aws:iam::&lt;tools-account-id&gt;:role/CodeBuildRole</code></pre>
-
-    <hr />
-
-    <h2>3. CodeBuild tries to access S3 bucket in another account</h2>
-
-    <p>Now CodeBuild tries:</p>
-
-    <pre><code>aws s3 sync ...</code></pre>
-
-    <p>or</p>
-
-    <pre><code>PutObject
-GetObject</code></pre>
-
-    <p>AWS now checks <strong>TWO things</strong>:</p>
-
-    <hr />
-
-    <h2>First check &rarr; IAM Role permissions (tools-account)</h2>
-
-    <p>AWS checks:</p>
-
-    <blockquote>
-      "Does CodeBuildRole itself allow these S3 actions?"
-    </blockquote>
-
-    <p>Your role policy says:</p>
-
-    <pre><code>{
-  "Action": [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:DeleteObject"
-  ],
-  "Resource": [
-      "arn:aws:s3:::bucket",
-      "arn:aws:s3:::bucket/*"
-  ]
-}</code></pre>
-
-    <p>So:</p>
-
-    <p>&#10003; The role IS ALLOWED to attempt these actions.</p>
-
-    <p>But that's not enough yet.</p>
-
-    <hr />
-
-    <h2>Second check &rarr; Bucket policy (dev-account)</h2>
-
-    <p>Now AWS asks the bucket owner:</p>
-
-    <blockquote>
-      "Do YOU allow this external role from another account?"
-    </blockquote>
-
-    <p>That is your bucket policy:</p>
-
-    <pre><code>{
-  "Principal": {
-      "AWS": "arn:aws:iam::&lt;tools-account-id&gt;:role/CodeBuildRole"
-  }
-}</code></pre>
-
-    <p>This means:</p>
-
-    <blockquote>
-      "I, the bucket owner, trust this role from the tools-account."
-    </blockquote>
-
-    <p>Now both sides agree:</p>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Side</th>
-          <th>Says</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>IAM Role</td>
-          <td>"I am allowed to access bucket"</td>
-        </tr>
-        <tr>
-          <td>Bucket</td>
-          <td>"I allow this external role"</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <p>So access succeeds.</p>
-
-    <hr />
-
-    <h2>SUPER IMPORTANT CONCEPT</h2>
-
-    <p>For cross-account access:</p>
-
-    <p>You usually need permission from <strong>BOTH SIDES</strong>.</p>
-
-    <p>Think of it like entering a private apartment:</p>
-
-    <ul>
-      <li>Your ID card says you're allowed to visit</li>
-      <li>Apartment security also says you're allowed in</li>
-    </ul>
-
-    <p>Both must approve.</p>
-
-    <hr />
-
-    <h2>Why is bucket policy necessary?</h2>
-
-    <p>Because the bucket is in <strong>ANOTHER AWS account</strong>.</p>
-
-    <p>Without bucket policy:</p>
-
-    <ul>
-      <li>The role may say:</li>
-    </ul>
-
-    <blockquote>
-      "I have permission to access the bucket"
-    </blockquote>
-
-    <p>BUT...</p>
-
-    <p>The bucket owner says:</p>
-
-    <blockquote>
-      "I never allowed you."
-    </blockquote>
-
-    <p>So AWS denies access.</p>
-
-    <hr />
-
-    <h2>What happens if bucket policy is removed?</h2>
-
-    <p>Even though CodeBuildRole has:</p>
-
-    <pre><code>s3:GetObject
-s3:PutObject</code></pre>
-
-    <p>the request fails with:</p>
-
-    <pre><code>AccessDenied</code></pre>
-
-    <p>
-      because cross-account resource access requires the resource owner to allow it.
-    </p>
-
-    <hr />
-
-    <h2>Easy analogy</h2>
-
-    <p>Imagine:</p>
-
-    <ul>
-      <li>Your school ID says:</li>
-    </ul>
-
-    <blockquote>
-      "Can enter library"
-    </blockquote>
-
-    <p>But the library belongs to another school.</p>
-
-    <p>That school must ALSO say:</p>
-
-    <blockquote>
-      "We allow students from your school."
-    </blockquote>
-
-    <p>That second permission is the bucket policy.</p>
-
-    <hr />
-
-    <h2>Why is CodeBuildRole necessary?</h2>
-
-    <p>Because CodeBuild service itself has no permissions.</p>
-
-    <p>AWS services don't magically get admin access.</p>
-
-    <p>The role is the identity CodeBuild uses.</p>
-
-    <hr />
-
-    <h2>What happens if CodeBuildRole doesn't exist?</h2>
-
-    <p>Then CodeBuild has:</p>
-
-    <ul>
-      <li>&#10060; no AWS credentials</li>
-      <li>&#10060; no permissions</li>
-      <li>&#10060; cannot call S3 APIs</li>
-    </ul>
-
-    <p>Build fails immediately.</p>
-
-    <hr />
-
-    <h2>Why both trust policy and permissions policy?</h2>
-
-    <p>These are <strong>DIFFERENT things</strong>.</p>
-
-    <hr />
-
-    <h3>Trust Policy = "Who can become me?"</h3>
-
-    <pre><code>{
-  "Principal": {
-      "Service": "codebuild.amazonaws.com"
-  }
-}</code></pre>
-
-    <p>This answers:</p>
-
-    <blockquote>
-      "Who is allowed to assume this role?"
-    </blockquote>
-
-    <p>Answer:</p>
-
-    <p>&#10003; CodeBuild service</p>
-
-    <hr />
-
-    <h3>Permissions Policy = "What can I do?"</h3>
-
-    <pre><code>{
-  "Action": [
-      "s3:PutObject"
-  ]
-}</code></pre>
-
-    <p>This answers:</p>
-
-    <blockquote>
-      "Once someone becomes this role, what are they allowed to do?"
-    </blockquote>
-
-    <p>Answer:</p>
-
-    <p>&#10003; Access S3 bucket</p>
-
-    <hr />
-
-  
-  </div>
-
-  <footer>
-    <p>&copy; <script>document.write(new Date().getFullYear())</script> Aneesh R. All rights reserved.</p>
-  </footer>
-
-</body>
+        color: #333;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid #bbb;
+        margin: 2rem 0;
+      }
+
+      img,
+      table {
+        max-width: 100%;
+      }
+
+      header {
+        width: 100%;
+        max-width: 900px;
+
+        margin: 0 auto;
+
+        background: #efefec;
+
+        padding: 1rem 1.25rem;
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        /* very subtle separation */
+        border-bottom: 1px solid #cfcfcf;
+      }
+
+      .header-logo {
+        height: 2.5rem;
+        width: auto;
+      }
+
+      header nav {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      header nav a {
+        color: #111;
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-decoration: underline;
+      }
+
+      footer {
+        text-align: center;
+        padding: 1.5rem 1rem;
+
+        font-size: 0.8rem;
+
+        color: #111;
+      }
+
+      @media (min-width: 768px) {
+        body {
+          padding: 3rem;
+        }
+
+        .container {
+          padding: 2.5rem;
+        }
+
+        h1 {
+          font-size: 3rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div
+      data-fx-mount
+      fx-action="../layout/header.html"
+      fx-swap="outerHTML"
+    ></div>
+
+    <div
+      data-fx-mount
+      id="container-slot"
+      fx-action="../contents/aws-cloudformation-lambda-cloudfront-invalidation-explained.html"
+      fx-swap="innerHTML"
+    ></div>
+
+    <div
+      data-fx-mount
+      fx-action="../layout/footer.html"
+      fx-swap="outerHTML"
+    ></div>
+
+    <script>
+      const slots = Array.from(document.querySelectorAll("[data-fx-mount]"));
+
+      Promise.all(
+        slots.map(el => fetch(el.getAttribute("fx-action")).then(r => r.text()))
+      )
+        .then(htmls => new Promise(resolve => setTimeout(() => resolve(htmls), 5)))
+        .then(htmls => {
+          slots.forEach((el, i) => {
+            const swap = el.getAttribute("fx-swap") || "outerHTML";
+            if (swap === "outerHTML") el.outerHTML = htmls[i];
+            else el.innerHTML = htmls[i];
+          });
+        });
+    </script>
+  </body>
 </html>

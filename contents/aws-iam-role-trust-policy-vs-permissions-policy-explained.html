@@ -1,0 +1,138 @@
+<div class="container">
+  <h1>AWS IAM Role Explained</h1>
+
+  <p>Think of an AWS IAM Role like a secure building with a job inside.</p>
+
+  <p>For example:</p>
+
+  <ul>
+    <li>One role lets a Lambda function upload files to S3.</li>
+    <li>Another role lets EC2 read from DynamoDB.</li>
+    <li>Another role lets CloudFront access a private S3 bucket.</li>
+  </ul>
+
+  <p>An IAM Role has 2 important parts:</p>
+
+  <ol>
+    <li>
+      <strong>Trust Policy</strong> → Who is allowed to enter the building?
+    </li>
+    <li>
+      <strong>Permissions Policy</strong> → What are they allowed to do once
+      inside?
+    </li>
+  </ol>
+
+  <hr />
+
+  <h2>1. Trust Policy = “Who can assume this role?”</h2>
+
+  <p>This answers:</p>
+
+  <blockquote>
+    “Which AWS service, user, or account is allowed to use this role?”
+  </blockquote>
+
+  <p>It is like the security guard at the entrance.</p>
+
+  <h3>Example</h3>
+
+  <pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}</code></pre>
+
+  <p>This means:</p>
+
+  <ul>
+    <li>AWS Lambda is trusted</li>
+    <li>Lambda can “assume” (take/use) this role</li>
+  </ul>
+
+  <p>✅ Lambda can enter the building.</p>
+
+  <p>But this policy does NOT say what Lambda can do yet.</p>
+
+  <hr />
+
+  <h2>2. Permissions Policy = “What can this role do?”</h2>
+
+  <p>Once Lambda enters the building, permissions decide:</p>
+
+  <ul>
+    <li>Can it read S3?</li>
+    <li>Can it write logs?</li>
+    <li>Can it delete DynamoDB tables?</li>
+  </ul>
+
+  <h3>Example</h3>
+
+  <pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "*"
+    }
+  ]
+}</code></pre>
+
+  <p>This means:</p>
+
+  <p>✅ The role can read objects from S3.</p>
+
+  <hr />
+
+  <h2>Simple Real-Life Analogy</h2>
+
+  <p>Imagine a school laboratory.</p>
+
+  <h3>Trust Policy</h3>
+
+  <p>The lab says:</p>
+
+  <blockquote>“Only science teachers may enter.”</blockquote>
+
+  <p>That is the trust policy.</p>
+
+  <h3>Permissions Policy</h3>
+
+  <p>Inside the lab:</p>
+
+  <ul>
+    <li>Teacher can use microscope</li>
+    <li>Teacher can use chemicals</li>
+    <li>Teacher CANNOT access principal’s office</li>
+  </ul>
+
+  <p>That is the permissions policy.</p>
+
+  <hr />
+
+  <h2>Important Concept</h2>
+
+  <p>Both are required.</p>
+
+  <h3>If trust exists but no permissions</h3>
+
+  <p>Lambda can assume the role… but cannot do anything useful.</p>
+
+  <p>Like entering an empty room.</p>
+
+  <h3>If permissions exist but no trust</h3>
+
+  <p>The role has powers… but nobody is allowed to use it.</p>
+
+  <p>Like a locked superhero suit nobody can wear.</p>
+</div>
