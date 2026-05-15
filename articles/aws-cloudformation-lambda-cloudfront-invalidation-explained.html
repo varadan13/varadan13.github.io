@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AWS CloudFormation Lambda CloudFront Invalidation Explained</title>
 
+    <link rel="icon" type="image/png" href="../favicon/" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../favicon/favicon.ico" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="../favicon/apple-touch-icon.png"
+    />
+    <link rel="manifest" href="../favicon/site.webmanifest" />
+
     <style>
       * {
         box-sizing: border-box;
@@ -209,7 +219,6 @@
         }
       }
     </style>
-
   </head>
 
   <body>
@@ -236,10 +245,15 @@
       const slots = Array.from(document.querySelectorAll("[data-fx-mount]"));
 
       Promise.all(
-        slots.map(el => fetch(el.getAttribute("fx-action")).then(r => r.text()))
+        slots.map((el) =>
+          fetch(el.getAttribute("fx-action")).then((r) => r.text()),
+        ),
       )
-        .then(htmls => new Promise(resolve => setTimeout(() => resolve(htmls), 5)))
-        .then(htmls => {
+        .then(
+          (htmls) =>
+            new Promise((resolve) => setTimeout(() => resolve(htmls), 5)),
+        )
+        .then((htmls) => {
           slots.forEach((el, i) => {
             const swap = el.getAttribute("fx-swap") || "outerHTML";
             if (swap === "outerHTML") el.outerHTML = htmls[i];
