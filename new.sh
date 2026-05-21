@@ -148,6 +148,11 @@ cat > "$SHELL_FILE" <<HTML
       header nav { display: flex; gap: 1.5rem; flex-wrap: wrap; }
       header nav a { color: #111; font-size: 0.95rem; font-weight: 700; text-decoration: underline; }
 
+      @media (max-width: 500px) {
+        header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+        header nav { gap: 0.75rem; }
+      }
+
       footer { text-align: center; padding: 1.5rem 1rem; font-size: 0.8rem; color: #111; }
 
       @media (min-width: 768px) {
