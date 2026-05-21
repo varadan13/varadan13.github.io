@@ -3,24 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Posts</title>
-    <meta name="description" content="Posts by Aneesh R — personal writing on fullstack development, AWS, and engineering at Kravein." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://varadan13.github.io/posts.html" />
-    <meta property="og:title" content="Posts — varadan13.github.io" />
-    <meta property="og:description" content="Posts by Aneesh R — personal writing on fullstack development, AWS, and engineering at Kravein." />
+    <title>How to Use AI to Learn?</title>
+    <meta name="description" content="A practical guide on using AI tools like Claude to break down complex learning material — Udemy lectures, open-source codebases — into bite-sized pieces you can actually absorb." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://varadan13.github.io/posts/how-to-use-ai-to-learn.html" />
+    <meta property="og:title" content="How to Use AI to Learn?" />
+    <meta property="og:description" content="A practical guide on using AI tools like Claude to break down complex learning material — Udemy lectures, open-source codebases — into bite-sized pieces you can actually absorb." />
     <meta property="og:image" content="https://varadan13.github.io/assets/header-image.jpg" />
     <meta property="og:site_name" content="varadan13.github.io" />
 
-    <link rel="icon" type="image/png" href="/favicon/" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="icon" type="image/png" href="../favicon/" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../favicon/favicon.ico" />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="/favicon/apple-touch-icon.png"
+      href="../favicon/apple-touch-icon.png"
     />
-    <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="manifest" href="../favicon/site.webmanifest" />
 
     <style>
       * {
@@ -240,39 +240,44 @@
   </head>
 
   <body>
-    <header>
-      <a href="/"
-        ><img src="/assets/header-image.jpg" alt="Kravein" class="header-logo"
-      /></a>
-      <nav>
-        <a href="/">Home</a>
-        <a href="/about.html">About Me</a>
-        <a href="/posts.html">Posts</a>
-        <a href="/articles.html">Articles</a>
-      </nav>
-    </header>
+    <div
+      data-fx-mount
+      fx-action="../layout/header.html"
+      fx-swap="outerHTML"
+    ></div>
 
-    <div class="container">
-      <h1>Posts</h1>
+    <div
+      data-fx-mount
+      id="container-slot"
+      fx-action="../contents/how-to-use-ai-to-learn.html"
+      fx-swap="innerHTML"
+    ></div>
 
-      <p>Collection of technical articles and notes.</p>
+    <div
+      data-fx-mount
+      fx-action="../layout/footer.html"
+      fx-swap="outerHTML"
+    ></div>
 
-      <div class="article-list">
-        <ul>
-          <li><a href="/posts/how-to-use-ai-to-learn.html">How to Use AI to Learn?</a></li>
-          <li><a href="/posts/javascript-tostring-quirk.html">Why Does {}.toString Break in JavaScript?</a></li>
-        </ul>
-      </div>
-    </div>
+    <script>
+      const slots = Array.from(document.querySelectorAll("[data-fx-mount]"));
 
-    <footer>
-      <p>
-        &copy;
-        <script>
-          document.write(new Date().getFullYear());
-        </script>
-        Aneesh R. All rights reserved.
-      </p>
-    </footer>
+      Promise.all(
+        slots.map((el) =>
+          fetch(el.getAttribute("fx-action")).then((r) => r.text()),
+        ),
+      )
+        .then(
+          (htmls) =>
+            new Promise((resolve) => setTimeout(() => resolve(htmls), 5)),
+        )
+        .then((htmls) => {
+          slots.forEach((el, i) => {
+            const swap = el.getAttribute("fx-swap") || "outerHTML";
+            if (swap === "outerHTML") el.outerHTML = htmls[i];
+            else el.innerHTML = htmls[i];
+          });
+        });
+    </script>
   </body>
 </html>
