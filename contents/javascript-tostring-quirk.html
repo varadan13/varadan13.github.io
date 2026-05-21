@@ -1,4 +1,6 @@
 <div class="container">
+  <h1>Why Does {}.toString Break in JavaScript?</h1>
+
   <p>In JavaScript, if we run</p>
 
   <pre><code class="language-javascript">{}.toString</code></pre>
@@ -15,7 +17,10 @@
 
   <hr />
 
-  <p>When JavaScript sees <code>{}.toString</code>, it makes an assumption that {} represents a <code>block</code>.</p>
+  <p>
+    When JavaScript sees <code>{}.toString</code>, it makes an assumption that
+    {} represents a <code>block</code>.
+  </p>
 
   <p>So in JavaScript's eyes <code>{}.toString</code> becomes:</p>
 
@@ -25,11 +30,21 @@
 
 }.toString;</code></pre>
 
-  <p>This means that when JavaScript sees {}.toString, it thinks the {} is an empty code block. Then it sees .toString sitting alone after the block, which doesn't make sense — so it throws an error.</p>
+  <p>
+    This means that when JavaScript sees {}.toString, it thinks the {} is an
+    empty code block. Then it sees .toString sitting alone after the block,
+    which doesn't make sense — so it throws an error.
+  </p>
 
   <hr />
 
-  <p>But why doesn't <code>const toString = {}.toString;</code> throw a SyntaxError?</p>
+  <p>
+    But why doesn't <code>const toString = {}.toString;</code> throw a
+    SyntaxError?
+  </p>
 
-  <p>Because now JavaScript can clearly see that {} is an object, and we are grabbing the toString property from it. No confusion, no error!</p>
+  <p>
+    Because now JavaScript can clearly see that {} is an object, and we are
+    grabbing the toString property from it. No confusion, no error!
+  </p>
 </div>
