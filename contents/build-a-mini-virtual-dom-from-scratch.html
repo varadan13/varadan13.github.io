@@ -1,0 +1,204 @@
+<div class="container">
+  <h1>Build a Mini Virtual DOM from Scratch</h1>
+
+  <p>Let's start building.</p>
+
+  <p>
+    Our first goal is to create a function that takes a string that looks like a
+    CSS selector and returns an object. The object shape is simple:
+    <code>{ tag, attrs, children }</code>. Extra attributes can be passed as a
+    second argument and merged in. Children (nested nodes or text) come last.
+  </p>
+
+  <p>Here is the function implemented:</p>
+
+  <pre><code class="language-js">// A text scanner that reads a shorthand description like
+// "div#app.container[type=text]" and splits it into recognizable pieces —
+// the tag name, the ID, class names, and bracket-style attributes.
+// It walks through the string chunk by chunk, one piece at a time.
+const selParser = /(?:(^|#|\.)([^#\.\[\]]+))|(\[.+?\])/g;
+
+// A secondary scanner that zooms into just the bracket part
+// of a shorthand — e.g. [type=text] or [checked] — and pulls out the
+// attribute name and its value (if any). Used after selParser flags a bracket.
+const attrParser = /\[(.+?)(?:=("|'|)(.+?)\2)?\]/;
+
+// We borrow toString from a plain object so we can reliably identify the true
+// type of any value passed in. typeof is unreliable — arrays, null, and plain
+// objects all return "object". {}.toString.call(x) returns a precise tag like
+// "[object Object]" or "[object Array]" that can't be faked.
+const toString = {}.toString;
+
+const createVn = function () {
+  const a = arguments;
+
+  // The function signature is createVn(selector, attrs?, children?). When attrs is
+  // omitted, the second argument is children. We check here which case we're
+  // in by seeing if a[1] is a plain object. toString.call is the reliable way
+  // to do this — it won't confuse arrays, vnodes, or strings for an attrs map.
+  const hasAttrs = toString.call(a[1]) == "[object Object]";
+  const attrs = hasAttrs ? a[1] : {};
+
+  // React uses "className"; raw DOM and some callers use "class". We detect
+  // which convention the caller is using so we can merge classes consistently
+  // throughout — if they pass { className: "foo" } we never write to "class",
+  // and vice versa.
+  const clsKey = "class" in attrs ? "class" : "className";
+
+  let m;
+  let classes = [];
+
+  const vn = { tag: "div", attrs: {} };
+
+  // selParser walks through the selector string one chunk at a time.
+  // Each match gives us a prefix in m[1] and a name in m[2], or a bracket
+  // attribute in m[3]:
+  //
+  //   m[1] == ""   → the very first token, which is the tag name  ("div")
+  //   m[1] == "#"  → an ID fragment                               (#app)
+  //   m[1] == "."  → a class fragment                             (.container)
+  //   m[3]         → a bracket attribute                           ([type=text])
+  //
+  // Classes are collected into an array and joined at the end because a single
+  // selector can have multiple: "div.foo.bar" → "foo bar".
+  // Bracket attributes are handed to attrParser for a second-level parse;
+  // a bare flag like [checked] gets the value true (no string value present).
+  while ((m = selParser.exec(a[0]))) {
+    if (m[1] == "") vn.tag = m[2];
+    else if (m[1] == "#") vn.attrs.id = m[2];
+    else if (m[1] == ".") classes.push(m[2]);
+    else if (m[3][0] == "[") {
+      var p = attrParser.exec(m[3]);
+      vn.attrs[p[1]] = p[3] || true;
+    }
+  }
+
+  if (classes.length) vn.attrs["className"] = classes.join(" ");
+
+  vn.children = hasAttrs ? a[2] : a[1];
+
+  for (var k in attrs) {
+    if (k == clsKey) vn.attrs[k] = (vn.attrs[k] || "") + " " + attrs[k];
+    else vn.attrs[k] = attrs[k];
+  }
+
+  return vn;
+};</code></pre>
+
+  <p>Now let's run the code above with a couple of test cases and see if it works.</p>
+
+  <ul>
+    <li>
+      <code>createVn("div")</code> should return
+      <code>{ tag: "div", attrs: {}, children: undefined }</code>
+    </li>
+    <li>
+      <code>createVn("div#app.container")</code> should return
+      <code>{ tag: "div", attrs: { id: "app", class: "container" }, children: undefined }</code>
+    </li>
+    <li>
+      <code>createVn("input[type=text]", { placeholder: "Name" })</code> should return
+      <code>{ tag: "input", attrs: { type: "text", placeholder: "Name" }, children: undefined }</code>
+    </li>
+    <li>
+      <code>createVn("ul", [createVn("li", "a"), createVn("li", "b")])</code> should return a
+      <code>ul</code> vnode with two <code>li</code> children.
+    </li>
+  </ul>
+
+  <p>
+    Now that we have verified the code works as expected, let's alias
+    <code>createVn</code> to <code>cvn</code> for brevity.
+  </p>
+
+  <hr />
+
+  <p>Before we move to the next step, there are two constraints we must add:</p>
+
+  <ol>
+    <li>
+      Parsing the selector string is expensive — the same selector can be called
+      thousands of times per render, so we should cache the parse result.
+    </li>
+    <li>
+      The cached result must never be mutated directly, since callers will add
+      things like id, class, and children — always return a clone.
+    </li>
+  </ol>
+
+  <p>Here is the updated code:</p>
+
+  <pre><code class="language-js">const cache = {};
+
+// A shallow copy helper — copies all keys from one object into a new one.
+// We use this to clone the cached vnode so the original is never touched.
+function clone(o) {
+  const r = {};
+  for (const k in o) r[k] = o[k];
+  return r;
+}
+
+const cvn = function () {
+  const a = arguments;
+  const hasAttrs = toString.call(a[1]) == "[object Object]";
+  const attrs = hasAttrs ? a[1] : {};
+  const clsKey = "class" in attrs ? "class" : "className";
+
+  // Check the cache first. If we've already parsed this selector string,
+  // skip the parsing loop entirely.
+  let vn = cache[a[0]];
+
+  if (!vn) {
+    // Not cached yet — parse and store the result.
+    cache[a[0]] = vn = { tag: "div", attrs: {} };
+    let m;
+    const classes = [];
+
+    while ((m = selParser.exec(a[0]))) {
+      if (m[1] == "") vn.tag = m[2];
+      else if (m[1] == "#") vn.attrs.id = m[2];
+      else if (m[1] == ".") classes.push(m[2]);
+      else if (m[3][0] == "[") {
+        var p = attrParser.exec(m[3]);
+        vn.attrs[p[1]] = p[3] || true;
+      }
+    }
+
+    if (classes.length) vn.attrs[clsKey] = classes.join(" ");
+  }
+
+  // Clone the cached result so we never mutate what's stored in cache.
+  vn = clone(vn);
+  vn.attrs = clone(vn.attrs);
+
+  vn.children = hasAttrs ? a[2] : a[1];
+
+  for (var k in attrs) {
+    if (k == clsKey) vn.attrs[k] = (vn.attrs[k] || "") + " " + attrs[k];
+    else vn.attrs[k] = attrs[k];
+  }
+
+  return vn;
+};</code></pre>
+
+  <p>Here is the data flow of the code above:</p>
+
+  <pre><code>"div#app.container"
+        |
+  [parse once, cache]
+        |
+  { tag: "div", attrs: { id: "app", class: "container" } }
+        |
+  [clone it]
+        |
+  [merge in caller's attrs]
+        |
+  [attach children]
+        |
+  return vnode</code></pre>
+
+  <p>
+    The key thing we are doing is <strong>parse once, clone always</strong>. The
+    cache is the optimization. The clone is the safety guarantee.
+  </p>
+</div>
