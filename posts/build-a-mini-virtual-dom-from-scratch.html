@@ -22,6 +22,10 @@
     />
     <link rel="manifest" href="../favicon/site.webmanifest" />
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" />
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js" defer></script>
+
     <style>
       * {
         box-sizing: border-box;
@@ -277,6 +281,7 @@
             if (swap === "outerHTML") el.outerHTML = htmls[i];
             else el.innerHTML = htmls[i];
           });
+          Prism.highlightAll();
         });
     </script>
   </body>
