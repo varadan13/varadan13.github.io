@@ -85,7 +85,10 @@ const createVn = function () {
   return vn;
 };</code></pre>
 
-  <p>Now let's run the code above with a couple of test cases and see if it works.</p>
+  <p>
+    Now let's run the code above with a couple of test cases and see if it
+    works.
+  </p>
 
   <ul>
     <li>
@@ -94,15 +97,22 @@ const createVn = function () {
     </li>
     <li>
       <code>createVn("div#app.container")</code> should return
-      <code>{ tag: "div", attrs: { id: "app", class: "container" }, children: undefined }</code>
+      <code
+        >{ tag: "div", attrs: { id: "app", class: "container" }, children:
+        undefined }</code
+      >
     </li>
     <li>
-      <code>createVn("input[type=text]", { placeholder: "Name" })</code> should return
-      <code>{ tag: "input", attrs: { type: "text", placeholder: "Name" }, children: undefined }</code>
+      <code>createVn("input[type=text]", { placeholder: "Name" })</code> should
+      return
+      <code
+        >{ tag: "input", attrs: { type: "text", placeholder: "Name" }, children:
+        undefined }</code
+      >
     </li>
     <li>
-      <code>createVn("ul", [createVn("li", "a"), createVn("li", "b")])</code> should return a
-      <code>ul</code> vnode with two <code>li</code> children.
+      <code>createVn("ul", [createVn("li", "a"), createVn("li", "b")])</code>
+      should return a <code>ul</code> vnode with two <code>li</code> children.
     </li>
   </ul>
 
@@ -110,8 +120,6 @@ const createVn = function () {
     Now that we have verified the code works as expected, let's alias
     <code>createVn</code> to <code>cvn</code> for brevity.
   </p>
-
-  <hr />
 
   <p>Before we move to the next step, there are two constraints we must add:</p>
 
@@ -138,7 +146,7 @@ function clone(o) {
   return r;
 }
 
-const cvn = function () {
+const createVn = function () {
   const a = arguments;
   const hasAttrs = toString.call(a[1]) == "[object Object]";
   const attrs = hasAttrs ? a[1] : {};
@@ -181,24 +189,193 @@ const cvn = function () {
   return vn;
 };</code></pre>
 
-  <p>Here is the data flow of the code above:</p>
+  <p>Here is the data flow sketch of the code above:</p>
 
-  <pre><code>"div#app.container"
-        |
-  [parse once, cache]
-        |
-  { tag: "div", attrs: { id: "app", class: "container" } }
-        |
-  [clone it]
-        |
-  [merge in caller's attrs]
-        |
-  [attach children]
-        |
-  return vnode</code></pre>
+  <pre><code>  "div#app.container"
+          |
+    [parse once, cache]
+          |
+    { tag: "div", attrs: { id: "app", class: "container" } }
+          |
+    [clone it]
+          |
+    [merge in caller's attrs]
+          |
+    [attach children]
+          |
+    return vnode</code></pre>
+
+  <p>So the key thing we are doing is parse once and clone always.</p>
+
+  <hr />
 
   <p>
-    The key thing we are doing is <strong>parse once, clone always</strong>. The
-    cache is the optimization. The clone is the safety guarantee.
+    Now we have a vnode factory. Nothing turns those objects into real DOM yet.
+    No renderer. No attribute writing. No text nodes.
   </p>
+
+  <p>
+    Our next problem is to create something that walks the vnode tree and calls
+    real browser APIs to build actual DOM from it.
+  </p>
+
+  <p>We have to build three new pieces into the code above:</p>
+
+  <ol>
+    <li>
+      <code>renderVNode(parent, vnode, index)</code> — the recursive workhorse.
+      Given a parent DOM node and a vnode, it creates a DOM element for object
+      vnodes, a text node for string or number vnodes, handles array vnodes by
+      iterating and recursing each item, and inserts the created node at the
+      right position via <code>insertBefore</code>.
+    </li>
+    <li>
+      <code>setAttrs(node, attrs)</code> — applies <code>vnode.attrs</code> onto
+      a real DOM node. Three cases: a <code>style</code> key whose value is an
+      object gets iterated rule by rule; a key that exists on the node is
+      assigned as a DOM property (covering <code>id</code>,
+      <code>className</code>, <code>onclick</code>, etc.); anything else falls
+      back to <code>setAttribute</code>.
+    </li>
+    <li>
+      <code>render(root, vnode)</code> — the public entry point. Clears root
+      completely (no diffing yet), then calls <code>renderVNode</code> to build
+      and insert the full tree.
+    </li>
+  </ol>
+
+  <p>Here are the functions implemented:</p>
+
+  <pre><code class="language-js">// Takes a real DOM node and a plain attrs object like { id: "app", onclick: fn, style: { color: "red" } }
+// and applies every key onto the node. Three different cases depending on the key:
+function setAttrs(node, attrs) {
+  for (const k in attrs) {
+    const v = attrs[k];
+    if (k == "style") {
+      // style is special — its value is itself an object like { color: "red", fontSize: "14px" }.
+      // We have to loop inside it and set each rule one at a time on node.style.
+      for (const rule in v) node.style[rule] = v[rule];
+    } else if (k in node) {
+      // If the key already exists on the DOM node (or anywhere up its prototype chain),
+      // set it as a property directly. This covers id, className, value, checked,
+      // and all event handlers like onclick, oninput — they live on the prototype.
+      node[k] = v;
+    } else {
+      // Key is not a known DOM property — fall back to setAttribute.
+      // This handles custom HTML attributes like data-* or aria-*.
+      node.setAttribute(k, v);
+    }
+  }
+}
+
+// Turns a single vnode (or array of vnodes, or a plain string) into real DOM
+// and appends it to parent at position index.
+// It calls itself recursively to handle nested children — the vnode tree
+// mirrors the DOM tree, so we just walk it depth-first.
+function renderVNode(parent, vnode, index) {
+  if (vnode == null) return; // nothing to render
+
+  const dt = toString.call(vnode);
+
+  if (dt == "[object Array]") {
+    // A list of siblings — render each one in order.
+    // i becomes the index so each child lands in the right slot.
+    for (let i = 0; i &lt; vnode.length; i++) renderVNode(parent, vnode[i], i);
+  } else if (dt == "[object Object]") {
+    // A vnode object like { tag: "div", attrs: {}, children: ... }
+    // — create a real DOM element from it.
+    if (typeof vnode.tag != "string") return; // safety guard: skip malformed vnodes
+
+    const node = document.createElement(vnode.tag); // e.g. creates &lt;div&gt;
+
+    setAttrs(node, vnode.attrs); // stamp id, class, events etc. onto it
+
+    if (vnode.children != null) renderVNode(node, vnode.children, 0); // recurse: build children inside this node
+
+    // Place the finished node into the parent at the right position.
+    // childNodes[index] is the existing node we want to insert before;
+    // if it doesn't exist (we're at the end) insertBefore treats null as "append".
+    parent.insertBefore(node, parent.childNodes[index] || null);
+  } else {
+    // Anything that isn't an array or object is treated as text — a string like "hello"
+    // or a number. Wrap it in a text node so the browser can display it.
+    const node = document.createTextNode(vnode);
+    parent.insertBefore(node, parent.childNodes[index] || null);
+  }
+}
+
+// Public entry point. Call this with a real DOM container and a vnode tree
+// to stamp the entire UI into the page.
+function render(root, vnode) {
+  root.innerHTML = ""; // wipe whatever was there before (no diffing yet)
+  renderVNode(root, vnode, 0);
+}</code></pre>
+
+  <p>
+    If we run the code below, we can see the form rendered using nothing but the
+    script above.
+  </p>
+
+  <pre><code class="language-js">render(
+  document.getElementById("root"),
+  cvn("div", [
+    cvn("h1", "Form Demo"),
+    cvn("input[type=text]", { placeholder: "Your name", value: "John" }),
+    cvn("input[type=checkbox]", { checked: true }),
+    cvn(
+      "button",
+      {
+        style: {
+          background: "blue",
+          color: "white",
+          padding: "8px 16px",
+        },
+        onclick: function () {
+          alert("clicked!");
+        },
+      },
+      "Click me",
+    ),
+  ]),
+);</code></pre>
+
+  <p>Now let's look at the updated data flow sketch:</p>
+
+  <pre><code>  render(root, vnode)
+          |
+    root.innerHTML = ""                        ← wipe (no diffing)
+          |
+    renderVNode(root, vnode, 0)
+          |
+    what type is vnode?
+      ├── Array    → iterate → renderVNode(parent, child, i)    [recurse each]
+      ├── Object   → cvn("div#app.container")
+      │                  |
+      │               [parse once, cache]
+      │                  |
+      │               { tag: "div", attrs: { id: "app", class: "container" } }
+      │                  |
+      │               [clone it]
+      │                  |
+      │               [merge in caller's attrs]
+      │                  |
+      │               [attach children]
+      │                  |
+      │             createElement(vnode.tag)
+      │                  |
+      │             setAttrs(node, vnode.attrs)
+      │                  |
+      │             renderVNode(node, vnode.children, 0)         [recurse]
+      │                  |
+      │             parent.insertBefore(node, childNodes[index])
+      └── string / number → createTextNode(vnode)
+                         |
+                    parent.insertBefore(node, childNodes[index])</code></pre>
+
+  <p>
+    We now have two things: a way to describe UI as plain JavaScript objects,
+    and a renderer that turns those objects into real DOM.
+  </p>
+
+  <p>What we don't have yet is diffing, which we will tackle in the future.</p>
 </div>
