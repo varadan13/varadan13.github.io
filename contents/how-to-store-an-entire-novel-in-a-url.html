@@ -1,0 +1,103 @@
+﻿<div class="container">
+  <h1>How to Store an Entire Novel in a URL?</h1>
+
+  <p>
+    Let's say you want to store the data of an entire novel like Shakespeare's
+    <em>As You Like It</em> in the URL. How do you do it?
+  </p>
+
+  <p>We are going to use a simple HTML file and some JavaScript to do it.</p>
+
+  <p>The HTML file should allow us to display the novel.</p>
+
+  <p>Here is the HTML code that will do just that:</p>
+
+  <pre><code class="language-html">&lt;article contenteditable="plaintext-only" spellcheck&gt;&lt;/article&gt;</code></pre>
+
+  <p>The code above will allow us to paste the entire novel into a text field-like UI.</p>
+
+  <p>Now let's write the JavaScript.</p>
+
+  <pre><code class="language-javascript">const article = document.querySelector("article");
+const content = article.textContent;</code></pre>
+
+  <p>The code above will grab the text content present within <code>article</code>.</p>
+
+  <pre><code class="language-javascript">async function compress(string) {
+  const byteArray = new TextEncoder().encode(string);
+  const stream = new CompressionStream("deflate-raw");
+  const writer = stream.writable.getWriter();
+  writer.write(byteArray);
+  writer.close();
+  const buffer = await new Response(stream.readable).arrayBuffer();
+  return new Uint8Array(buffer).toBase64({ alphabet: "base64url" });
+}</code></pre>
+
+  <p>
+    The code above is complicated, but the gist is that it takes the content string,
+    compresses it to save space, encodes it into a base64 string, and ensures the
+    output string can be used in a URL.
+  </p>
+
+  <pre><code class="language-javascript">async function save() {
+  const content = article.textContent;
+  const hash = "#" + (await compress(content));
+  history.replaceState({}, "", hash);
+}</code></pre>
+
+  <p>
+    The code above puts the pieces together â€” it grabs the text content, compresses
+    it, and sets it as the hash of the URL.
+  </p>
+
+  <pre><code class="language-javascript">article.addEventListener("input", save);
+article.addEventListener("blur", save);</code></pre>
+
+  <p>The code above allows us to run the save function when we paste the text content of our favorite novel.</p>
+
+  <p>
+    The code is not complete â€” when we reload, we are not reading the data embedded
+    in the URL and feeding it into <code>article</code>, so nothing will be shown in the UI.
+  </p>
+
+  <pre><code class="language-javascript">const hash = location.hash;</code></pre>
+
+  <p>In the code above, we are grabbing data from the hash of the URL.</p>
+
+  <pre><code class="language-javascript">async function decompress(b64) {
+  const byteArray = Uint8Array.fromBase64(b64, { alphabet: "base64url" });
+  const stream = new DecompressionStream("deflate-raw");
+  const writer = stream.writable.getWriter();
+  writer.write(byteArray);
+  writer.close();
+  const buffer = await new Response(stream.readable).arrayBuffer();
+  return new TextDecoder().decode(buffer);
+}</code></pre>
+
+  <p>The code above does the inverse of the <code>compress</code> function.</p>
+
+  <pre><code class="language-javascript">async function set() {
+  const hash = location.hash;
+  const content = await decompress(hash.slice(1)); // See the save function to understand why this slice is needed
+  article.textContent = content;
+}</code></pre>
+
+  <p>
+    The code above does the following: it grabs the hash, decompresses it, and feeds
+    it into the <code>article</code> element.
+  </p>
+
+  <p>Still, we need a way to run the set function only when the document loads.</p>
+
+  <pre><code class="language-javascript">addEventListener("DOMContentLoaded", set);</code></pre>
+
+  <p>The code above will now call the set function when the document loads.</p>
+
+  <p>
+    With this code in place, we can now encode any novel into our URL. For example,
+    clicking <span hx-get="/data/as-you-like-it-link.html" hx-trigger="load" hx-swap="outerHTML"></span>, you can see <em>As You Like It</em> loaded from the hash of the URL.
+  </p>
+
+  <p>Reference: <a href="https://github.com/antonmedv/textarea">github.com/antonmedv/textarea</a></p>
+
+</div>

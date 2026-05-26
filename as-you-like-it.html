@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>As You Like It — varadan13.github.io</title>
+    <meta name="description" content="Read Shakespeare's As You Like It — stored entirely in the URL hash." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://varadan13.github.io/as-you-like-it" />
+    <meta property="og:title" content="As You Like It — varadan13.github.io" />
+    <meta property="og:description" content="Read Shakespeare's As You Like It — stored entirely in the URL hash." />
+    <meta property="og:image" content="https://varadan13.github.io/assets/header-image.jpg" />
+    <meta property="og:site_name" content="varadan13.github.io" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+
+    <link rel="icon" type="image/png" href="/favicon/" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
+  </head>
+<body>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: light dark;
+    background-color: #fff;
+    color: #161616;
+
+    @media (prefers-color-scheme: dark) {
+      background-color: #000;
+      color: #fff;
+    }
+  }
+
+  article {
+    outline: none;
+    padding: 18px max(18px, calc(50vw - 400px));
+    width: 100%;
+    min-height: 100vh;
+    font: 18px / 1.5 system-ui;
+    tab-size: 4;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    white-space: pre-wrap;
+    text-wrap-style: stable;
+    overflow-wrap: break-word;
+  }
+</style>
+<article></article>
+<script>
+  const article = document.querySelector("article");
+  article.addEventListener("input", debounce(500, save));
+  article.addEventListener("blur", save);
+  addEventListener("DOMContentLoaded", load);
+  addEventListener("hashchange", load);
+
+  async function load() {
+    if (location.hash !== "") await set(location.hash);
+  }
+
+  async function save() {
+    const hash = await get();
+    if (location.hash !== hash) history.replaceState({}, "", hash);
+  }
+
+  async function set(hash) {
+    if (!hash) return;
+    const content = await decompress(hash.slice(1));
+    article.textContent = content;
+  }
+
+  async function get() {
+    const content = article.textContent;
+    return "#" + (await compress(content));
+  }
+
+  async function compress(string) {
+    const byteArray = new TextEncoder().encode(string);
+    const stream = new CompressionStream("deflate-raw");
+    const writer = stream.writable.getWriter();
+    writer.write(byteArray);
+    writer.close();
+    const buffer = await new Response(stream.readable).arrayBuffer();
+    return new Uint8Array(buffer).toBase64({ alphabet: "base64url" });
+  }
+
+  async function decompress(b64) {
+    const byteArray = Uint8Array.fromBase64(b64, { alphabet: "base64url" });
+    const stream = new DecompressionStream("deflate-raw");
+    const writer = stream.writable.getWriter();
+    writer.write(byteArray);
+    writer.close();
+    const buffer = await new Response(stream.readable).arrayBuffer();
+    return new TextDecoder().decode(buffer);
+  }
+
+  function debounce(ms, fn) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+ </script>
+</body>
+</html>
