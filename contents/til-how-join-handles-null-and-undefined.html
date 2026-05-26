@@ -1,0 +1,21 @@
+<div class="container">
+  <h1>TIL: How <code>null</code> and <code>undefined</code> are handled by <code>Array.join()</code></h1>
+
+  <pre><code class="language-js">[1, 2, 3].join(", ")</code></pre>
+
+  <p>The code above will give the following output:</p>
+
+  <pre><code class="language-js">'1, 2, 3'</code></pre>
+
+  <p>
+    When any of the array elements are either <code>null</code> or
+    <code>undefined</code>, <code>join</code> converts them to an empty string
+    and applies the given separator. For example:
+  </p>
+
+  <pre><code class="language-js">[1, null, undefined, 2].join(", ")</code></pre>
+
+  <p>The code above will give the following output:</p>
+
+  <pre><code class="language-js">'1, , , 2'</code></pre>
+</div>
