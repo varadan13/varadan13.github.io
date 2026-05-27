@@ -3,24 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Articles</title>
-    <meta name="description" content="Tutoring articles written with the help of LLMs." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://varadan13.github.io/articles.html" />
-    <meta property="og:title" content="Articles — varadan13.github.io" />
-    <meta property="og:description" content="Tutoring articles written with the help of LLMs." />
+    <title>TIL: Tagged Template Literals in JavaScript</title>
+    <meta name="description" content="How tagged template literals work in JavaScript — what your tag function receives, how JavaScript splits the template, and why they're more powerful than regular template literals." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://varadan13.github.io/articles/til-tagged-template-literals-in-javascript.html" />
+    <meta property="og:title" content="TIL: Tagged Template Literals in JavaScript" />
+    <meta property="og:description" content="How tagged template literals work in JavaScript — what your tag function receives, how JavaScript splits the template, and why they're more powerful than regular template literals." />
     <meta property="og:image" content="https://varadan13.github.io/assets/header-image.jpg" />
     <meta property="og:site_name" content="varadan13.github.io" />
 
-    <link rel="icon" type="image/png" href="/favicon/" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="icon" type="image/png" href="../favicon/" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../favicon/favicon.ico" />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="/favicon/apple-touch-icon.png"
+      href="../favicon/apple-touch-icon.png"
     />
-    <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="manifest" href="../favicon/site.webmanifest" />
 
     <style>
       * {
@@ -240,69 +240,44 @@
   </head>
 
   <body>
-    <header>
-      <a href="/"
-        ><img src="/assets/header-image.jpg" alt="Kravein" class="header-logo"
-      /></a>
-      <nav>
-        <a href="/">Home</a>
-        <a href="/about.html">About Me</a>
-        <a href="/posts.html">Posts</a>
-        <a href="/articles.html">Articles</a>
-      </nav>
-    </header>
+    <div
+      data-fx-mount
+      fx-action="../layout/header.html"
+      fx-swap="outerHTML"
+    ></div>
 
-    <div class="container">
-      <h1>Articles</h1>
+    <div
+      data-fx-mount
+      id="container-slot"
+      fx-action="../contents/til-tagged-template-literals-in-javascript.html"
+      fx-swap="innerHTML"
+    ></div>
 
-      <p>Tutoring articles written by LLMs.</p>
+    <div
+      data-fx-mount
+      fx-action="../layout/footer.html"
+      fx-swap="outerHTML"
+    ></div>
 
-      <div class="article-list">
-        <ul>
-          <li>
-            <a href="/articles/til-tagged-template-literals-in-javascript.html">
-              TIL: Tagged Template Literals in JavaScript
-            </a>
-          </li>
-          <li>
-            <a
-              href="/articles/aws-iam-role-trust-policy-vs-permissions-policy-explained.html"
-            >
-              AWS IAM Role: Trust Policy vs Permissions Policy Explained
-            </a>
-          </li>
-          <li>
-            <a href="/articles/aws-cross-account-s3-access-codebuild-explained">
-              AWS Cross-Account S3 Access with CodeBuild Explained
-            </a>
-          </li>
-          <li>
-            <a
-              href="/articles/aws-cloudformation-lambda-cloudfront-invalidation-explained"
-            >
-              How to create a lambda which invalidates cloudfront using
-              cloudformation?
-            </a>
-          </li>
-          <li>
-            <a
-              href="/articles/aws-codepipeline-cross-account-lambda-invoke-explained"
-            >
-              AWS CodePipeline Cross-Account Lambda Invoke Explained
-            </a>
-          </li>
-        </ul>
-      </div>
-    </div>
+    <script>
+      const slots = Array.from(document.querySelectorAll("[data-fx-mount]"));
 
-    <footer>
-      <p>
-        &copy;
-        <script>
-          document.write(new Date().getFullYear());
-        </script>
-        Aneesh R. All rights reserved.
-      </p>
-    </footer>
+      Promise.all(
+        slots.map((el) =>
+          fetch(el.getAttribute("fx-action")).then((r) => r.text()),
+        ),
+      )
+        .then(
+          (htmls) =>
+            new Promise((resolve) => setTimeout(() => resolve(htmls), 5)),
+        )
+        .then((htmls) => {
+          slots.forEach((el, i) => {
+            const swap = el.getAttribute("fx-swap") || "outerHTML";
+            if (swap === "outerHTML") el.outerHTML = htmls[i];
+            else el.innerHTML = htmls[i];
+          });
+        });
+    </script>
   </body>
 </html>
