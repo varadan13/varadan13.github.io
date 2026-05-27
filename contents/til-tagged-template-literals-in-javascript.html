@@ -1,0 +1,177 @@
+<div class="container">
+  <h1>TIL: Tagged Template Literals in JavaScript</h1>
+
+  <p>Most JavaScript developers know template literals as a cleaner way to build strings:</p>
+
+  <pre><code class="language-javascript">const name = "Mike";
+console.log(`Hello ${name}`);</code></pre>
+
+  <p>Output:</p>
+
+  <pre><code>Hello Mike</code></pre>
+
+  <blockquote>But what if you could intercept that process and decide what to return yourself?</blockquote>
+
+  <hr />
+
+  <p>That's what tagged templates do.</p>
+
+  <p>Instead of JavaScript immediately assembling the string, it hands the pieces to your function and lets <em>your code decide what to return</em>.</p>
+
+  <p>You can escape HTML, validate values, build SQL helpers, create DSLs, or even return objects instead of strings.</p>
+
+  <hr />
+
+  <h2>How it works</h2>
+
+  <p>To tag a template literal, place a function name directly before the backtick:</p>
+
+  <pre><code class="language-javascript">myTag`That ${person} is a ${age}.`</code></pre>
+
+  <p>JavaScript splits the template into two parts and calls your function:</p>
+
+  <pre><code class="language-javascript">myTag(
+  ["That ", " is a ", "."],
+  "Mike",
+  28
+)</code></pre>
+
+  <p>The first argument is an array of all the literal string segments. The rest are the interpolated values, spread as individual arguments.</p>
+
+  <blockquote>There is always one more string segment than expression.</blockquote>
+
+  <pre><code>strings.length === values.length + 1</code></pre>
+
+  <hr />
+
+  <h2>Example — Customizing the output</h2>
+
+  <pre><code class="language-javascript">const person = "Mike";
+const age = 28;
+
+function myTag(strings, personExp, ageExp) {
+  const str0 = strings[0]; // "That "
+  const str1 = strings[1]; // " is a "
+  const str2 = strings[2]; // "."
+
+  const ageStr = ageExp < 100 ? "youngster" : "centenarian";
+
+  return `${str0}${personExp}${str1}${ageStr}${str2}`;
+}
+
+const output = myTag`That ${person} is a ${age}.`;
+
+console.log(output);</code></pre>
+
+  <p>Output:</p>
+
+  <pre><code>That Mike is a youngster.</code></pre>
+
+  <p>The tag function received <code>28</code> as a raw number, applied its own logic, and substituted <code>"youngster"</code> in its place. The final string never contained the age at all.</p>
+
+  <hr />
+
+  <h2>Chaining tags — a function that returns itself</h2>
+
+  <pre><code class="language-javascript">function recursive(strings, ...values) {
+  console.log(strings, values);
+  return recursive;
+}
+
+recursive`Hello``World`;</code></pre>
+
+  <blockquote>What gets logged?</blockquote>
+
+  <hr />
+
+  <p>This is conceptually equivalent to:</p>
+
+  <pre><code class="language-javascript">recursive(`Hello`)(`World`)</code></pre>
+
+  <p>But because these are tagged templates, JavaScript passes structured arguments — not bare strings.</p>
+
+  <p>First call:</p>
+
+  <pre><code>strings = ["Hello"]
+values  = []</code></pre>
+
+  <p>The function returns itself. JavaScript immediately applies it as a tag to the next template:</p>
+
+  <pre><code>strings = ["World"]
+values  = []</code></pre>
+
+  <p>Final output:</p>
+
+  <pre><code>["Hello"] []
+["World"] []</code></pre>
+
+  <p>Any function that returns a callable can be chained this way.</p>
+
+  <hr />
+
+  <h2>The shape of a tag function</h2>
+
+  <pre><code class="language-javascript">tag`Hi ${x}!`
+
+// becomes
+
+tag(["Hi ", "!"], x)</code></pre>
+
+  <p>The name of the tag function can be anything. The return value can be anything — a string, an object, another function.</p>
+
+  <hr />
+
+  <h2>Flashcards</h2>
+
+  <hr />
+
+  <blockquote>What does a tagged template function receive first?</blockquote>
+
+  <p>An array containing the literal string segments.</p>
+
+  <hr />
+
+  <blockquote>Where do <code>${...}</code> expressions go?</blockquote>
+
+  <p>Into the remaining parameters (<code>...values</code>).</p>
+
+  <hr />
+
+  <blockquote>What does this become?</blockquote>
+
+  <pre><code class="language-javascript">tag`Hi ${x}!`</code></pre>
+
+  <pre><code class="language-javascript">tag(["Hi ", "!"], x)</code></pre>
+
+  <hr />
+
+  <blockquote>Why does this work?</blockquote>
+
+  <pre><code class="language-javascript">recursive`Hello``World`</code></pre>
+
+  <p>Because the first tagged call returns another function, which immediately becomes the tag for the next template.</p>
+
+  <hr />
+
+  <blockquote>What is always true about <code>strings</code> and <code>values</code>?</blockquote>
+
+  <pre><code>strings.length === values.length + 1</code></pre>
+
+  <hr />
+
+  <blockquote>What is the output?</blockquote>
+
+  <pre><code class="language-javascript">function t(s, a) {
+  return s[0] + a;
+}
+
+t`Age: ${10}`</code></pre>
+
+  <pre><code>Age: 10</code></pre>
+
+  <hr />
+
+  <blockquote>Why use tagged templates over regular template literals?</blockquote>
+
+  <p>To intercept the template and customize parsing, formatting, escaping, or validation — or to return something other than a string entirely.</p>
+</div>
