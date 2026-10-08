@@ -1,0 +1,234 @@
+<div class="container">
+  <h1>Git Worktree Workflow Explained</h1>
+
+  <p>Think of a Git repository like a house with one desk.</p>
+
+  <p>
+    Normally you can only work on one branch at a time. If you are halfway
+    through a feature and someone asks for a quick fix, you have to clear the
+    desk first: commit half-done work, or <code>git stash</code> it, then
+    switch branches.
+  </p>
+
+  <p>A <strong>worktree</strong> gives the same house a second desk.</p>
+
+  <ul>
+    <li>Same repository, same history, same commits.</li>
+    <li>A separate folder on disk.</li>
+    <li>A different branch checked out in that folder.</li>
+  </ul>
+
+  <p>Here is the whole workflow at a glance:</p>
+
+  <pre><code>Create
+  ↓
+git worktree add -b new-branch ../new-branch main
+  ↓
+Work + commit
+  ↓
+Go to main worktree
+  ↓
+git pull
+  ↓
+git merge new-branch
+  ↓
+git push
+  ↓
+git worktree remove ../new-branch
+  ↓
+git branch -d new-branch</code></pre>
+
+  <p>Let's walk through each step.</p>
+
+  <hr />
+
+  <h2>1. Create the worktree</h2>
+
+  <pre><code>git worktree add -b new-branch ../new-branch main</code></pre>
+
+  <p>Read it right to left:</p>
+
+  <ul>
+    <li><code>main</code> → start from the <code>main</code> branch</li>
+    <li>
+      <code>../new-branch</code> → put the new folder next to the current
+      repo, not inside it
+    </li>
+    <li><code>-b new-branch</code> → create a new branch called <code>new-branch</code></li>
+  </ul>
+
+  <p>Your disk now looks like this:</p>
+
+  <pre><code>projects/
+├── my-repo/        ← main worktree, on branch main
+└── new-branch/     ← new worktree, on branch new-branch</code></pre>
+
+  <blockquote>
+    Why not just put both folders on <code>main</code>?
+  </blockquote>
+
+  <p>
+    Git does not allow it. A branch can only be checked out in
+    <strong>one</strong> worktree at a time. That is why the new worktree
+    always gets its own branch.
+  </p>
+
+  <hr />
+
+  <h2>2. Work and commit</h2>
+
+  <pre><code>cd ../new-branch
+# edit files
+git add .
+git commit -m "Add the new feature"</code></pre>
+
+  <p>
+    Nothing special here. This folder behaves like any normal clone. The
+    difference: your <code>my-repo</code> folder is untouched. You can keep it
+    open in another editor window, run its dev server, or fix something else
+    in it at the same time.
+  </p>
+
+  <p>
+    Commits made here are visible from every worktree immediately, because
+    they all share the same <code>.git</code> data.
+  </p>
+
+  <hr />
+
+  <h2>3. Go back to the main worktree</h2>
+
+  <pre><code>cd ../my-repo</code></pre>
+
+  <p>
+    The merge happens where <code>main</code> is checked out. That is the
+    original folder.
+  </p>
+
+  <hr />
+
+  <h2>4. Pull first</h2>
+
+  <pre><code>git pull</code></pre>
+
+  <blockquote>Why pull before merging?</blockquote>
+
+  <p>
+    While you were working, other people may have pushed to
+    <code>main</code>. If you merge first and pull later, you get an extra
+    merge commit, or a push that gets rejected. Pulling first means you merge
+    into the latest <code>main</code>.
+  </p>
+
+  <hr />
+
+  <h2>5. Merge the branch</h2>
+
+  <pre><code>git merge new-branch</code></pre>
+
+  <p>
+    This brings your commits into <code>main</code>. If there are conflicts,
+    you fix them here, in the main worktree, like any other merge.
+  </p>
+
+  <hr />
+
+  <h2>6. Push</h2>
+
+  <pre><code>git push</code></pre>
+
+  <p>✅ Your work is now on the remote <code>main</code>.</p>
+
+  <hr />
+
+  <h2>7. Remove the worktree</h2>
+
+  <pre><code>git worktree remove ../new-branch</code></pre>
+
+  <p>This deletes the folder and tells Git the second desk is gone.</p>
+
+  <blockquote>Why not just delete the folder by hand?</blockquote>
+
+  <p>
+    You can, but Git still remembers it until you run
+    <code>git worktree prune</code>. <code>git worktree remove</code> does both
+    in one step. It also refuses to remove a folder with uncommitted changes,
+    so you cannot lose work by accident.
+  </p>
+
+  <hr />
+
+  <h2>8. Delete the branch</h2>
+
+  <pre><code>git branch -d new-branch</code></pre>
+
+  <p>
+    The lowercase <code>-d</code> is the safe delete. Git only deletes the
+    branch if it has been merged. Since you just merged it, this works.
+  </p>
+
+  <blockquote>Why does the order of steps 7 and 8 matter?</blockquote>
+
+  <p>
+    Git will not delete a branch that is checked out in a worktree. Remove the
+    worktree first, then the branch.
+  </p>
+
+  <hr />
+
+  <h2>Simple Real-Life Analogy</h2>
+
+  <p>Imagine a kitchen.</p>
+
+  <ul>
+    <li>
+      <strong>Main worktree</strong> → the main counter, where finished dishes
+      are plated.
+    </li>
+    <li>
+      <strong>New worktree</strong> → a side counter where you try a new
+      recipe without messing up the main one.
+    </li>
+    <li>
+      <strong>Pull</strong> → check what the other cooks added to the main
+      counter.
+    </li>
+    <li>
+      <strong>Merge</strong> → move your finished recipe onto the main
+      counter.
+    </li>
+    <li><strong>Push</strong> → serve it.</li>
+    <li>
+      <strong>Remove + delete</strong> → clean and put away the side counter.
+    </li>
+  </ul>
+
+  <hr />
+
+  <h2>Useful Extras</h2>
+
+  <p>See every worktree you have:</p>
+
+  <pre><code>git worktree list</code></pre>
+
+  <p>Start from the very latest remote <code>main</code> instead of your local copy:</p>
+
+  <pre><code>git fetch
+git worktree add -b new-branch ../new-branch origin/main</code></pre>
+
+  <p>Clean up worktrees whose folders you already deleted by hand:</p>
+
+  <pre><code>git worktree prune</code></pre>
+
+  <hr />
+
+  <h2>Summary</h2>
+
+  <ul>
+    <li>A worktree is a second folder for the same repository.</li>
+    <li>Each worktree must be on a different branch.</li>
+    <li>Do the work in the new worktree, merge in the main one.</li>
+    <li>Always pull before you merge.</li>
+    <li>Remove the worktree before deleting its branch.</li>
+  </ul>
+</div>
