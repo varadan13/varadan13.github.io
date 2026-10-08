@@ -1,0 +1,205 @@
+<div class="container">
+  <h1>How to Step Through a Playwright Test in Headed Mode</h1>
+
+  <p>Think of a Playwright test like a robot clicking through your app.</p>
+
+  <p>
+    By default the robot works with the lights off. That is
+    <strong>headless mode</strong>: no browser window, just a pass or fail at
+    the end. Fast, but when a test fails you only see the aftermath.
+  </p>
+
+  <p>Sometimes you want to turn the lights on and watch the robot, one move at a time.</p>
+
+  <p>Playwright gives you three ways to do that:</p>
+
+  <ol>
+    <li><strong><code>--headed</code></strong> → watch the robot work at full speed</li>
+    <li><strong><code>--debug</code></strong> → make the robot wait for you before every move</li>
+    <li><strong><code>--ui</code></strong> → rewind and replay every move afterwards</li>
+  </ol>
+
+  <hr />
+
+  <h2>1. <code>--headed</code> = “Turn the lights on”</h2>
+
+  <pre><code>npx playwright test tests/checkout.spec.ts --headed</code></pre>
+
+  <p>
+    A real browser window opens and the test runs in it. You see every click
+    and every page load.
+  </p>
+
+  <blockquote>“But it finishes in two seconds. How am I supposed to follow it?”</blockquote>
+
+  <p>
+    You can't, really. <code>--headed</code> shows you <em>that</em> something
+    happened, not <em>why</em>. For that you need to slow the robot down.
+  </p>
+
+  <hr />
+
+  <h2>2. <code>--debug</code> = “Wait for me before every move”</h2>
+
+  <pre><code>npx playwright test tests/checkout.spec.ts --debug</code></pre>
+
+  <p>This opens two windows:</p>
+
+  <ul>
+    <li>The browser, paused before the first step.</li>
+    <li>
+      The <strong>Playwright Inspector</strong>, showing your test code with
+      the current line highlighted.
+    </li>
+  </ul>
+
+  <p>Now you drive:</p>
+
+  <ul>
+    <li><strong>Step over (F10)</strong> → run the next line, then pause again</li>
+    <li><strong>Resume (F8)</strong> → run until the next pause or the end</li>
+  </ul>
+
+  <p>
+    On each step, the Inspector highlights the element the line is about to
+    act on, and shows a log of what Playwright did: which locator it waited
+    for, how long it waited, what it clicked.
+  </p>
+
+  <p>✅ This is the best way to find out why a locator doesn't match.</p>
+
+  <blockquote>“My test has 40 lines. I only care about line 35.”</blockquote>
+
+  <p>Stepping through 34 lines to get there is painful. There is a shortcut.</p>
+
+  <hr />
+
+  <h2>3. <code>page.pause()</code> = “Stop here”</h2>
+
+  <p>Put a pause exactly where you want to start looking:</p>
+
+  <pre><code class="language-javascript">test('checkout', async ({ page }) => {
+  await page.goto('/cart');
+  await page.getByRole('button', { name: 'Checkout' }).click();
+
+  await page.pause(); // ← the robot stops here
+
+  await page.getByLabel('Card number').fill('4242 4242 4242 4242');
+});</code></pre>
+
+  <p>Then run with <code>--headed</code>, not <code>--debug</code>:</p>
+
+  <pre><code>npx playwright test tests/checkout.spec.ts --headed</code></pre>
+
+  <p>
+    The test runs at full speed until it reaches <code>page.pause()</code>,
+    then opens the Inspector. From there you step as before.
+  </p>
+
+  <p>Remember to delete the <code>page.pause()</code> before you commit.</p>
+
+  <hr />
+
+  <h2>4. <code>--ui</code> = “Rewind and replay”</h2>
+
+  <pre><code>npx playwright test tests/checkout.spec.ts --ui</code></pre>
+
+  <p>UI mode is different. Instead of pausing the test, it records it. You get:</p>
+
+  <ul>
+    <li>A timeline of every action.</li>
+    <li>A snapshot of the page before and after each action. Click one to inspect it.</li>
+    <li>Every network request the page made, with its response.</li>
+    <li>Console logs and errors, lined up with the step that caused them.</li>
+  </ul>
+
+  <blockquote>“When would I pick this over <code>--debug</code>?”</blockquote>
+
+  <p>
+    When the problem is about <em>timing</em>, such as a request that comes
+    back late, or a button that is disabled for half a second. Pausing the
+    test changes the timing and can hide the bug. UI mode lets the test run at
+    real speed, then lets you go back and look.
+  </p>
+
+  <hr />
+
+  <h2>5. From VS Code</h2>
+
+  <p>If you have the <strong>Playwright Test for VS Code</strong> extension installed:</p>
+
+  <ol>
+    <li>Set a normal breakpoint in your spec file.</li>
+    <li>In the Testing sidebar, tick <strong>Show browser</strong>.</li>
+    <li>Right-click the green run icon next to the test → <strong>Debug Test</strong>.</li>
+  </ol>
+
+  <p>
+    Now you get the VS Code debugger: hover over variables, inspect
+    <code>locator</code> objects, use the debug console, all while the
+    browser window sits open next to it.
+  </p>
+
+  <hr />
+
+  <h2>One Trap: Which Server Is the Test Hitting?</h2>
+
+  <p>Most Playwright configs read the app's address from somewhere like this:</p>
+
+  <pre><code class="language-javascript">// playwright.config.ts
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173';</code></pre>
+
+  <p>
+    If you have two copies of your app running, say your main branch on
+    <code>5173</code> and a fix branch on <code>5174</code>, the test will
+    happily run against the wrong one. You'll step through it carefully and
+    wonder why your fix isn't working.
+  </p>
+
+  <p>Point it at the right server before running:</p>
+
+  <pre><code># macOS / Linux
+PLAYWRIGHT_BASE_URL=http://localhost:5174 npx playwright test tests/checkout.spec.ts --debug
+
+# Windows PowerShell
+$env:PLAYWRIGHT_BASE_URL = 'http://localhost:5174'
+npx playwright test tests/checkout.spec.ts --debug</code></pre>
+
+  <p>
+    Note that the VS Code extension doesn't see variables you set in your
+    terminal. Put the value in an <code>.env</code> file your config loads
+    instead.
+  </p>
+
+  <hr />
+
+  <h2>Simple Real-Life Analogy</h2>
+
+  <p>Imagine watching a football match.</p>
+
+  <ul>
+    <li><strong>Headless</strong> → you only read the final score.</li>
+    <li><strong><code>--headed</code></strong> → you watch the match live.</li>
+    <li>
+      <strong><code>--debug</code></strong> → the referee stops play after every
+      pass and waits for your signal.
+    </li>
+    <li><strong><code>page.pause()</code></strong> → you skip straight to the 80th minute.</li>
+    <li>
+      <strong><code>--ui</code></strong> → the full replay, with every angle,
+      after the match.
+    </li>
+  </ul>
+
+  <hr />
+
+  <h2>Summary</h2>
+
+  <ul>
+    <li><code>--headed</code> shows the browser, at full speed.</li>
+    <li><code>--debug</code> pauses before every step and opens the Inspector.</li>
+    <li><code>page.pause()</code> + <code>--headed</code> pauses only where you want.</li>
+    <li><code>--ui</code> records everything so you can look back, best for timing bugs.</li>
+    <li>Always check which server <code>baseURL</code> points at.</li>
+  </ul>
+</div>
