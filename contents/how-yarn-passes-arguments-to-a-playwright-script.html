@@ -1,0 +1,112 @@
+<div class="container">
+  <h1>How Yarn Passes Arguments to a Playwright Script</h1>
+
+  <p>Here is a command that runs one Playwright test, one step at a time:</p>
+
+  <pre><code>yarn e2e e2e/regression/BUG-00003.spec.ts --debug</code></pre>
+
+  <p>And here is the script it runs, from <code>package.json</code>:</p>
+
+  <pre><code class="language-json">"scripts": {
+  "e2e": "playwright test"
+}</code></pre>
+
+  <blockquote>“The script only says <code>playwright test</code>. Where do the file and <code>--debug</code> go?”</blockquote>
+
+  <hr />
+
+  <h2>1. Yarn glues them onto the end</h2>
+
+  <p>
+    Anything you type after the script name gets added to the end of the
+    script's command. So Yarn actually runs:
+  </p>
+
+  <pre><code>playwright test e2e/regression/BUG-00003.spec.ts --debug</code></pre>
+
+  <p>Playwright then reads two things:</p>
+
+  <ul>
+    <li>
+      <strong><code>e2e/regression/BUG-00003.spec.ts</code></strong> → a file
+      filter. Only tests whose path matches it will run.
+    </li>
+    <li>
+      <strong><code>--debug</code></strong> → open a visible browser and the
+      Playwright Inspector, then pause before the first step.
+    </li>
+  </ul>
+
+  <p>
+    The file filter is really a pattern. <code>BUG-00003</code> on its own
+    works just as well, and <code>regression</code> runs every spec in that
+    folder.
+  </p>
+
+  <hr />
+
+  <h2>2. npm needs a <code>--</code></h2>
+
+  <p>Try the same thing with npm:</p>
+
+  <pre><code>npm run e2e e2e/regression/BUG-00003.spec.ts --debug</code></pre>
+
+  <blockquote>“Why does the browser never open?”</blockquote>
+
+  <p>
+    npm reads flags such as <code>--debug</code> as settings for npm itself,
+    so Playwright never sees them. Put <code>--</code> in front to say
+    “everything after this is for the script”:
+  </p>
+
+  <pre><code>npm run e2e -- e2e/regression/BUG-00003.spec.ts --debug</code></pre>
+
+  <p>
+    Yarn 1 doesn't need the <code>--</code>, though it still accepts it.
+    Older Yarn 1 versions printed a warning when you used it.
+  </p>
+
+  <hr />
+
+  <h2>3. Other flags work the same way</h2>
+
+  <pre><code># watch it run, full speed
+yarn e2e BUG-00003 --headed
+
+# record it, then replay each step
+yarn e2e BUG-00003 --ui
+
+# run only tests whose title matches
+yarn e2e -g "zero override"</code></pre>
+
+  <p>
+    For what <code>--debug</code>, <code>--headed</code> and <code>--ui</code>
+    each do, see
+    <a href="/articles/how-to-step-through-a-playwright-test-in-headed-mode.html">How to Step Through a Playwright Test in Headed Mode</a>.
+  </p>
+
+  <hr />
+
+  <h2>One Trap: Start the App First</h2>
+
+  <p>
+    If your <code>playwright.config.ts</code> has no <code>webServer</code>
+    section, Playwright won't start your app for you. It just opens
+    <code>baseURL</code> and fails if nothing is there. Run the dev server in
+    another terminal first:
+  </p>
+
+  <pre><code>yarn dev</code></pre>
+
+  <hr />
+
+  <h2>Summary</h2>
+
+  <ul>
+    <li>Yarn adds everything after the script name to the end of the script's command.</li>
+    <li>A path or word after <code>playwright test</code> filters which spec files run.</li>
+    <li><code>--debug</code> pauses before each step so you can go through them one at a time.</li>
+    <li>With npm, add <code>--</code> before arguments meant for the script.</li>
+    <li>Without a <code>webServer</code> in the config, start the app yourself.</li>
+  </ul>
+</div>
