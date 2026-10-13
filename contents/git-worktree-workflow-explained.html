@@ -30,7 +30,7 @@ Go to main worktree
   ↓
 git pull
   ↓
-git merge new-branch
+git merge --no-ff new-branch
   ↓
 git push
   ↓
@@ -124,12 +124,34 @@ git commit -m "Add the new feature"</code></pre>
 
   <h2>5. Merge the branch</h2>
 
-  <pre><code>git merge new-branch</code></pre>
+  <pre><code>git merge --no-ff new-branch</code></pre>
 
   <p>
     This brings your commits into <code>main</code>. If there are conflicts,
     you fix them here, in the main worktree, like any other merge.
   </p>
+
+  <blockquote>What does <code>--no-ff</code> do?</blockquote>
+
+  <p>
+    If nobody else touched <code>main</code> while you worked, Git would
+    normally do a <em>fast-forward</em>: it just moves <code>main</code> up to
+    your last commit. No merge commit is made, and the history looks as if you
+    had committed straight to <code>main</code>.
+  </p>
+
+  <p>
+    <code>--no-ff</code> ("no fast-forward") always makes a merge commit. The
+    branch stays visible in the history as one unit, so you can see where the
+    feature started and ended, and undo the whole thing with a single
+    <code>git revert -m 1 &lt;merge-commit&gt;</code>.
+  </p>
+
+  <pre><code>Fast-forward:   A---B---C---D        (main)
+
+--no-ff:        A---B-------M        (main)
+                     \     /
+                      C---D          (new-branch)</code></pre>
 
   <hr />
 
@@ -229,6 +251,7 @@ git worktree add -b new-branch ../new-branch origin/main</code></pre>
     <li>Each worktree must be on a different branch.</li>
     <li>Do the work in the new worktree, merge in the main one.</li>
     <li>Always pull before you merge.</li>
+    <li>Merge with <code>--no-ff</code> so the branch stays visible in the history.</li>
     <li>Remove the worktree before deleting its branch.</li>
   </ul>
 </div>
