@@ -1,0 +1,373 @@
+<div class="container">
+  <h1>How to Debug a Stuck ACM Certificate Validation</h1>
+
+  <p>
+    You request an AWS Certificate Manager (ACM) certificate for two domains.
+    One turns green. The other sits at <strong>Pending validation</strong>,
+    and there is no button to make it try again.
+  </p>
+
+  <pre><code>Domain            Status
+example.com       Pending validation
+example.com.au    Success</code></pre>
+
+  <blockquote>“The record is there. Why won't it verify?”</blockquote>
+
+  <p>
+    The AWS console only shows you the result. To find the cause, you have to
+    look at DNS the way ACM does: from the public internet. This article does
+    that with three command-line tools and two free Google services:
+  </p>
+
+  <ol>
+    <li><strong>AWS CLI</strong> → what ACM <em>expects</em> to find</li>
+    <li><strong><code>dig</code> / <code>nslookup</code></strong> → what DNS actually <em>says</em></li>
+    <li><strong><code>curl</code> + Google's <code>dns.google</code> API</strong> → the same lookup, as JSON, from any machine</li>
+    <li><strong>Google Public DNS (<code>8.8.8.8</code>)</strong> → an outside resolver that ignores your laptop's cache</li>
+    <li><strong>Google Admin Toolbox Dig</strong> → a browser version, when you can't install anything</li>
+  </ol>
+
+  <hr />
+
+  <h2>How DNS Validation Works</h2>
+
+  <p>For every domain on the certificate, ACM gives you one CNAME record:</p>
+
+  <pre><code>Name:  _a1b2c3d4e5f6.example.com.
+Value: _f6e5d4c3b2a1.abcdefghij.acm-validations.aws.</code></pre>
+
+  <p>You publish it in the domain's DNS. Then ACM, on its own schedule, looks up the name from the internet. If the answer matches the value exactly, the domain flips to <strong>Success</strong>.</p>
+
+  <p>Two rules matter:</p>
+
+  <ul>
+    <li>A domain that hasn't validated after <strong>72 hours</strong> fails, and you have to request the certificate again.</li>
+    <li>Within one AWS account, ACM normally gives the <strong>same CNAME</strong> to the same domain every time. Remember this one. It's the way out at the end.</li>
+  </ul>
+
+  <blockquote>“So if it's stuck, one of those lookups must be failing. Which one?”</blockquote>
+
+  <p>Work through the five checks below in order. Each one rules out one cause.</p>
+
+  <hr />
+
+  <h2>Check 1: What Does ACM Expect?</h2>
+
+  <p>Don't copy the value off the console table. It's truncated, and it's easy to grab the wrong row. Ask the CLI:</p>
+
+  <pre><code>aws acm list-certificates --region us-east-1
+
+aws acm describe-certificate \
+  --region us-east-1 \
+  --certificate-arn arn:aws:acm:us-east-1:111122223333:certificate/abcd-1234 \
+  --query "Certificate.DomainValidationOptions[].{domain:DomainName,status:ValidationStatus,name:ResourceRecord.Name,value:ResourceRecord.Value}" \
+  --output json</code></pre>
+
+  <p>You get the exact name and value for each domain, along with its status:</p>
+
+  <pre><code class="language-json">[
+  {
+    "domain": "example.com",
+    "status": "PENDING_VALIDATION",
+    "name": "_a1b2c3d4e5f6.example.com.",
+    "value": "_f6e5d4c3b2a1.abcdefghij.acm-validations.aws."
+  },
+  {
+    "domain": "example.com.au",
+    "status": "SUCCESS",
+    "name": "_0f9e8d7c6b5a.example.com.au.",
+    "value": "_5a6b7c8d9e0f.abcdefghij.acm-validations.aws."
+  }
+]</code></pre>
+
+  <p>
+    Keep this terminal open. Every check below compares DNS against these two
+    strings.
+  </p>
+
+  <p>
+    Use the right region. A certificate for CloudFront always lives in
+    <code>us-east-1</code>. One for a load balancer lives in the load
+    balancer's region.
+  </p>
+
+  <hr />
+
+  <h2>Check 2: Who Answers for the Domain?</h2>
+
+  <p>
+    A record only counts if it's in the zone the internet actually uses. Ask
+    Google Public DNS which nameservers are in charge of the domain:
+  </p>
+
+  <pre><code>dig NS example.com @8.8.8.8 +short
+
+# Windows
+nslookup -type=NS example.com 8.8.8.8</code></pre>
+
+  <pre><code>ns-187.awsdns-23.com.
+ns-991.awsdns-59.net.
+ns-1131.awsdns-13.org.
+ns-1754.awsdns-27.co.uk.</code></pre>
+
+  <p>Now compare with the hosted zone you put the record in:</p>
+
+  <pre><code>aws route53 list-hosted-zones-by-name --dns-name example.com
+
+aws route53 get-hosted-zone --id Z0123456789ABC \
+  --query "DelegationSet.NameServers"</code></pre>
+
+  <blockquote>“They're different. Does that matter?”</blockquote>
+
+  <p>
+    It's the whole problem. The registrar points the world at one set of
+    nameservers, and your record sits in a zone nobody asks. This happens when
+    a hosted zone is deleted and created again (each new zone gets new
+    nameservers), or when the domain is registered somewhere else, such as
+    GoDaddy, and its DNS is still managed there.
+  </p>
+
+  <p>
+    The fix: create the record in the zone the registrar actually points to,
+    or update the registrar's nameserver list to match the Route 53 zone.
+  </p>
+
+  <hr />
+
+  <h2>Check 3: Can the Internet See the Record?</h2>
+
+  <p>Look up the validation name through Google Public DNS:</p>
+
+  <pre><code>dig CNAME _a1b2c3d4e5f6.example.com @8.8.8.8 +short
+
+# Windows
+nslookup -type=CNAME _a1b2c3d4e5f6.example.com 8.8.8.8</code></pre>
+
+  <p>
+    No <code>dig</code>? No problem. Google runs a DNS-over-HTTPS API that
+    returns JSON, so plain <code>curl</code> works on any machine, including a
+    CI runner:
+  </p>
+
+  <pre><code>curl -s "https://dns.google/resolve?name=_a1b2c3d4e5f6.example.com&amp;type=CNAME"</code></pre>
+
+  <pre><code class="language-json">{
+  "Status": 0,
+  "Answer": [
+    {
+      "name": "_a1b2c3d4e5f6.example.com.",
+      "type": 5,
+      "TTL": 300,
+      "data": "_f6e5d4c3b2a1.abcdefghij.acm-validations.aws."
+    }
+  ]
+}</code></pre>
+
+  <p>How to read it:</p>
+
+  <ul>
+    <li><code>"Status": 0</code> + an <code>Answer</code> → the record is public. Go to check 4.</li>
+    <li><code>"Status": 3</code> (NXDOMAIN) → the name doesn't exist. Go back to check 2.</li>
+    <li><code>"Status": 0</code> but no <code>Answer</code> → the name exists but has no CNAME, often because a TXT or A record was created instead.</li>
+  </ul>
+
+  <p>
+    If you'd rather click than type, the same lookup is at
+    <a href="https://toolbox.googleapps.com/apps/dig/">Google Admin Toolbox Dig</a>.
+    Pick <strong>CNAME</strong> and paste the name.
+  </p>
+
+  <blockquote>“I created it ten minutes ago and Google says NXDOMAIN. Is it broken?”</blockquote>
+
+  <p>
+    Maybe not. A resolver caches a “doesn't exist” answer too, for as long as
+    the zone's SOA record says. Skip all caches by asking one of the domain's
+    own nameservers from check 2 directly:
+  </p>
+
+  <pre><code>dig CNAME _a1b2c3d4e5f6.example.com @ns-187.awsdns-23.com +short</code></pre>
+
+  <p>
+    If the domain's own nameserver has the record but Google doesn't, it's a
+    cache. Wait out the TTL. If the nameserver doesn't have it either, the
+    record isn't in that zone.
+  </p>
+
+  <hr />
+
+  <h2>Check 4: Is It the Right Value?</h2>
+
+  <p>
+    Put the DNS answer from check 3 next to the value from check 1. They must
+    match character for character, including the trailing dot.
+  </p>
+
+  <p>The usual ways they go wrong:</p>
+
+  <ul>
+    <li>
+      <strong>Doubled domain.</strong> Many DNS providers add the domain to
+      whatever you type in the name box. Paste
+      <code>_a1b2c3d4e5f6.example.com</code> and you get
+      <code>_a1b2c3d4e5f6.example.com.example.com</code>. Type only
+      <code>_a1b2c3d4e5f6</code>.
+    </li>
+    <li>
+      <strong>Old record.</strong> A CNAME left over from a certificate in
+      another AWS account. It has the right name but the wrong value.
+    </li>
+    <li>
+      <strong>Wrong row.</strong> The value for <code>example.com.au</code>
+      pasted under <code>example.com</code>.
+    </li>
+  </ul>
+
+  <p>Spot the doubled domain with a single query:</p>
+
+  <pre><code>curl -s "https://dns.google/resolve?name=_a1b2c3d4e5f6.example.com.example.com&amp;type=CNAME"</code></pre>
+
+  <p>If that one answers, you've found it.</p>
+
+  <hr />
+
+  <h2>Check 5: Is a CAA Record Blocking Amazon?</h2>
+
+  <p>
+    A CAA record lists the certificate authorities that may issue certificates
+    for a domain. If one exists and Amazon isn't on the list, ACM refuses,
+    even with perfect validation records.
+  </p>
+
+  <pre><code>dig CAA example.com @8.8.8.8 +short
+
+# Works everywhere, including Windows, where nslookup can't query CAA
+curl -s "https://dns.google/resolve?name=example.com&amp;type=CAA"</code></pre>
+
+  <ul>
+    <li>No <code>Answer</code> → no CAA record. Any CA may issue. Fine.</li>
+    <li>An answer without <code>amazon.com</code> (or <code>amazontrust.com</code>) → add <code>0 issue "amazon.com"</code>.</li>
+  </ul>
+
+  <p>
+    CAA is checked at the domain and then at each parent. For
+    <code>app.example.com</code>, check <code>example.com</code> too.
+  </p>
+
+  <hr />
+
+  <h2>All Five Pass. Now What?</h2>
+
+  <p>
+    Then nothing is wrong. ACM just hasn't looked again yet. It re-checks
+    pending domains on its own schedule: usually within about 30 minutes,
+    sometimes a few hours.
+  </p>
+
+  <blockquote>“Can I force it to check now?”</blockquote>
+
+  <p>
+    No. There's no re-validate button, CLI command or API call. But remember
+    rule two from the start: within one account, a domain gets the same CNAME
+    every time. So request a fresh certificate for the same domains:
+  </p>
+
+  <pre><code>aws acm request-certificate \
+  --region us-east-1 \
+  --domain-name example.com \
+  --subject-alternative-names example.com.au \
+  --validation-method DNS</code></pre>
+
+  <p>Confirm that it asks for the record you already have:</p>
+
+  <pre><code>aws acm describe-certificate --region us-east-1 \
+  --certificate-arn &lt;NEW_ARN&gt; \
+  --query "Certificate.DomainValidationOptions[].ResourceRecord"</code></pre>
+
+  <p>
+    A new request is checked right away, and the record is already there, so
+    it's usually issued within minutes. Let the CLI wait for you:
+  </p>
+
+  <pre><code>aws acm wait certificate-validated --region us-east-1 --certificate-arn &lt;NEW_ARN&gt;</code></pre>
+
+  <p>
+    Then point CloudFront, the load balancer or API Gateway at the new ARN, and
+    delete the old pending certificate.
+  </p>
+
+  <p>
+    If check 4 found a wrong value, a new certificate won't help. Fix the
+    record instead, and the old certificate validates on ACM's next check.
+  </p>
+
+  <hr />
+
+  <h2>The Whole Thing as One Script</h2>
+
+  <p>
+    This runs checks 1, 3, 4 and 5 for every domain on a certificate. It only
+    needs the AWS CLI, <code>curl</code> and <code>jq</code>, so it also runs
+    in a CI job.
+  </p>
+
+  <pre><code class="language-bash">#!/usr/bin/env bash
+# Usage: ./check-acm.sh &lt;certificate-arn&gt; [region]
+set -euo pipefail
+
+ARN="$1"
+REGION="${2:-us-east-1}"
+
+aws acm describe-certificate --region "$REGION" --certificate-arn "$ARN" \
+  --query "Certificate.DomainValidationOptions[]" --output json |
+jq -c '.[]' | while read -r row; do
+  domain=$(jq -r '.DomainName' &lt;&lt;&lt; "$row")
+  status=$(jq -r '.ValidationStatus' &lt;&lt;&lt; "$row")
+  name=$(jq -r '.ResourceRecord.Name' &lt;&lt;&lt; "$row")
+  want=$(jq -r '.ResourceRecord.Value' &lt;&lt;&lt; "$row")
+
+  # What Google Public DNS sees
+  got=$(curl -s "https://dns.google/resolve?name=${name}&amp;type=CNAME" |
+        jq -r '.Answer[0].data // "NONE"')
+
+  # Any CAA record on the domain
+  caa=$(curl -s "https://dns.google/resolve?name=${domain}&amp;type=CAA" |
+        jq -r '[.Answer[]?.data] | join(", ") | if . == "" then "none" else . end')
+
+  if [[ "$got" == "$want" ]]; then match="yes"; else match="NO"; fi
+
+  echo "$domain"
+  echo "  ACM status : $status"
+  echo "  expected   : $want"
+  echo "  public DNS : $got"
+  echo "  match      : $match"
+  echo "  CAA        : $caa"
+done</code></pre>
+
+  <hr />
+
+  <h2>Simple Real-Life Analogy</h2>
+
+  <p>Think of ACM as a courier who has to find a note pinned to your front door.</p>
+
+  <ul>
+    <li><strong>Check 1</strong> → read the courier's instructions so you know what the note must say.</li>
+    <li><strong>Check 2</strong> → make sure you pinned it to the house the map points to, not your old flat.</li>
+    <li><strong>Check 3</strong> → walk out to the street and look at the door yourself.</li>
+    <li><strong>Check 4</strong> → read the note. Is it the right one, spelled correctly?</li>
+    <li><strong>Check 5</strong> → is there a “no couriers except FedEx” sign on the gate?</li>
+    <li><strong>New request</strong> → book another delivery. The note is already up, so this courier finds it at once.</li>
+  </ul>
+
+  <hr />
+
+  <h2>Summary</h2>
+
+  <ul>
+    <li>Get the exact expected name and value from <code>aws acm describe-certificate</code>, not the console table.</li>
+    <li>Check the domain's real nameservers with <code>dig NS @8.8.8.8</code> and compare them with your hosted zone.</li>
+    <li>Look the record up through <code>8.8.8.8</code> or <code>https://dns.google/resolve</code>, then ask the domain's own nameserver to skip caches.</li>
+    <li>Match the value character for character, and watch for a doubled domain in the name.</li>
+    <li>Check CAA. Windows <code>nslookup</code> can't, but <code>dns.google</code> can.</li>
+    <li>If everything checks out, ACM just hasn't looked yet. Wait, or request a new certificate, which reuses the same record.</li>
+  </ul>
+</div>
