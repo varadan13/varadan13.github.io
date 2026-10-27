@@ -1,0 +1,199 @@
+<div class="container">
+  <h1>How to Clear the Cache Before a Fresh Playwright Run</h1>
+
+  <p>
+    A test keeps failing, and you want to rule out leftovers from earlier runs.
+    You want a fresh login, fresh results and a fresh build, nothing carried over.
+  </p>
+
+  <blockquote>“Where does Playwright keep things between runs, and which of them should I delete?”</blockquote>
+
+  <p>There are five places. Here they are, one at a time.</p>
+
+  <hr />
+
+  <h2>1. Test results</h2>
+
+  <p>
+    Every failure leaves a folder in <code>test-results/</code> with a
+    screenshot, a trace and an <code>error-context.md</code>. Playwright empties
+    this folder at the start of each run, so you rarely need to delete it
+    yourself. The exception is when you want old failures gone before you start.
+  </p>
+
+  <pre><code>rm -rf test-results</code></pre>
+
+  <p>
+    One file in there matters: <code>test-results/.last-run.json</code>. It
+    lists the tests that failed last time, and <code>--last-failed</code> reads
+    it:
+  </p>
+
+  <pre><code>yarn e2e --last-failed</code></pre>
+
+  <p>
+    Delete <code>test-results/</code> and <code>--last-failed</code> has
+    nothing to go on, so it runs every test.
+  </p>
+
+  <hr />
+
+  <h2>2. The saved login</h2>
+
+  <p>
+    Most suites log in once and save the session to a file. The config then
+    hands that file to every test:
+  </p>
+
+  <pre><code class="language-javascript">// playwright.config.ts
+use: {
+  storageState: 'e2e/.auth/user.json',
+}</code></pre>
+
+  <p>
+    That file holds cookies and <code>localStorage</code>: the auth tokens and
+    anything else the app remembers, such as the last workspace or place you
+    picked.
+  </p>
+
+  <blockquote>“If I log in as someone else, why do the tests still act like the old account?”</blockquote>
+
+  <p>
+    Your global setup may skip the login when the file already exists. If it
+    does, the tests keep using the old session. Delete the file to force a new
+    login:
+  </p>
+
+  <pre><code>rm -rf e2e/.auth</code></pre>
+
+  <p>
+    This file is a live session. Keep it in <code>.gitignore</code>, and don't
+    paste it anywhere.
+  </p>
+
+  <hr />
+
+  <h2>3. Playwright's own cache</h2>
+
+  <p>
+    Before it runs your specs, Playwright compiles the TypeScript and caches the
+    output. If a test seems to run old code after you edited it, clear that
+    cache:
+  </p>
+
+  <pre><code>npx playwright clear-cache</code></pre>
+
+  <p>This doesn't touch your results, your login or the browsers.</p>
+
+  <hr />
+
+  <h2>4. The app build</h2>
+
+  <p>
+    If the config starts the app for you, check what <code>webServer</code>
+    actually runs:
+  </p>
+
+  <pre><code class="language-javascript">webServer: {
+  command: 'yarn build &amp;&amp; yarn preview --port 4173 --strictPort',
+  url: 'http://localhost:4173',
+  reuseExistingServer: false,
+}</code></pre>
+
+  <p>
+    This one builds every time, so <code>dist/</code> is always fresh. Look out
+    for two things:
+  </p>
+
+  <ul>
+    <li>
+      <strong>A flag that skips the build.</strong> If the config skips
+      <code>yarn build</code> when some environment variable is set, the tests
+      run against whatever <code>dist/</code> already holds. Unset that variable
+      for a fresh run.
+    </li>
+    <li>
+      <strong><code>reuseExistingServer: true</code>.</strong> If anything is
+      already listening on that port, Playwright uses it, even if it's an old
+      build from earlier.
+    </li>
+  </ul>
+
+  <blockquote>“Why does the run fail before a single test starts?”</blockquote>
+
+  <p>
+    With <code>--strictPort</code>, the preview server won't move to another
+    port. It just stops. The usual cause is a server from an earlier run, often
+    a Playwright UI window you forgot to close. Find what's using the port:
+  </p>
+
+  <pre><code># Windows
+netstat -ano | findstr :4173
+
+# macOS / Linux
+lsof -i :4173</code></pre>
+
+  <p>Close that window, or stop the process, and the port is free again.</p>
+
+  <hr />
+
+  <h2>5. The browsers</h2>
+
+  <p>
+    Browser binaries live outside your project, in a shared folder
+    (<code>ms-playwright</code>). You almost never need to clear it. If a browser
+    crashes on launch, or seems to be the wrong version, reinstall it:
+  </p>
+
+  <pre><code>npx playwright install --force chromium</code></pre>
+
+  <hr />
+
+  <h2>All Together</h2>
+
+  <pre><code># 1. close any Playwright UI window that's still running
+# 2. clear results, the saved login and the compile cache
+rm -rf test-results e2e/.auth
+npx playwright clear-cache
+
+# 3. run everything: fresh build, fresh login
+yarn e2e</code></pre>
+
+  <hr />
+
+  <h2>What a Fresh Run Won't Fix</h2>
+
+  <p>
+    Clearing the cache only removes what's on <em>your</em> machine. If your
+    tests run against a live API, the data lives on the server.
+  </p>
+
+  <blockquote>“The run was fresh. Why is the same test still failing?”</blockquote>
+
+  <p>
+    Open the failure's trace and look at the API responses:
+  </p>
+
+  <pre><code>npx playwright show-trace test-results/&lt;test-folder&gt;/trace.zip</code></pre>
+
+  <p>
+    Suppose the list query comes back with <code>total_size: 0</code> and the
+    test is waiting for the first row. Then nothing is stale: the account just
+    has no data. No amount of clearing fixes that. Either point the tests at an
+    account that has the data, or have each test create what it needs before it
+    starts.
+  </p>
+
+  <hr />
+
+  <h2>Summary</h2>
+
+  <ul>
+    <li><code>test-results/</code> is emptied at the start of each run. Delete it yourself only to clear old failures or reset <code>--last-failed</code>.</li>
+    <li>Delete the <code>storageState</code> file to force a new login.</li>
+    <li><code>npx playwright clear-cache</code> clears the compiled test code.</li>
+    <li>Make sure <code>webServer</code> really rebuilds, and that nothing else is holding its port.</li>
+    <li>Reinstall a browser with <code>npx playwright install --force</code>, and only if it's broken.</li>
+    <li>If a fresh run still fails, check the trace. The problem may be the data, not the cache.</li>
+  </ul>
+</div>
