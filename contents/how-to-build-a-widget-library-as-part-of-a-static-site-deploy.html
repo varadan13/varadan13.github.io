@@ -1,0 +1,262 @@
+<div class="container">
+  <h1>How to Build a Widget Library as Part of a Static Site Deploy</h1>
+
+  <p>
+    You have a plain static site: a <code>pages/</code> folder of HTML that a
+    small Node script copies to <code>dist/</code>, and CI syncs to a bucket. No
+    framework. Next to it sits a widget library, a Vite project that compiles a
+    few Web Components into one file, <code>pages/assets/widgets.js</code>.
+  </p>
+
+  <p>
+    Until now someone built that file by hand and committed it. You want the
+    deploy to build it instead, and you want it to know which API it talks to.
+  </p>
+
+  <blockquote>“How do I make one build compile both, and give the widgets the right API key for each environment?”</blockquote>
+
+  <p>Here it is, in four steps.</p>
+
+  <hr />
+
+  <h2>1. See What the Build Does Today</h2>
+
+  <p>Start with the root <code>package.json</code>:</p>
+
+  <pre><code class="language-javascript">"scripts": {
+  "build:DEV1": "node scripts/build.mjs dev",
+  "build:PROD": "node scripts/build.mjs prod"
+}</code></pre>
+
+  <p>
+    The script copies <code>pages/</code> to <code>dist/</code> unchanged and
+    adds only what depends on the environment: a robots meta tag on each page,
+    <code>robots.txt</code>, and sitemaps for prod. CI runs
+    <code>npm run build:$ENVIRONMENT</code>, then syncs <code>dist/</code>.
+  </p>
+
+  <p>
+    The widget library is a separate project with its own
+    <code>package.json</code>. Its Vite config writes straight into the site's
+    assets folder:
+  </p>
+
+  <pre><code class="language-javascript">// widget-library/vite.config.ts
+build: {
+  outDir: resolve(import.meta.dirname, "../pages/assets"),
+  emptyOutDir: false,
+  lib: {
+    entry: resolve(import.meta.dirname, "src/index.ts"),
+    formats: ["es"],
+    fileName: "widgets",
+  },
+}</code></pre>
+
+  <p>
+    <code>emptyOutDir: false</code> matters here. Without it, Vite would wipe
+    the rest of <code>pages/assets/</code>: your CSS, images and fonts.
+  </p>
+
+  <p>
+    So the order is simple. Build the widgets into <code>pages/</code> first,
+    then copy <code>pages/</code> to <code>dist/</code>.
+  </p>
+
+  <hr />
+
+  <h2>2. Run the Widget Build Before the Site Build</h2>
+
+  <p>
+    Chain the two in the deploy scripts. <code>npm --prefix</code> runs a script
+    in another folder without a <code>cd</code>:
+  </p>
+
+  <pre><code class="language-javascript">"build:DEV1": "npm --prefix widget-library run build -- --mode DEV1 &amp;&amp; node scripts/build.mjs dev",
+"build:PROD": "npm --prefix widget-library run build -- --mode PROD &amp;&amp; node scripts/build.mjs prod"</code></pre>
+
+  <p>
+    <code>&amp;&amp;</code> means the site build only runs if the widgets
+    compiled. A type error stops the deploy before anything reaches the bucket.
+  </p>
+
+  <blockquote>“Why not add a separate <code>build:widgets</code> script and call that?”</blockquote>
+
+  <p>
+    You can, until you need to pass it an argument. In
+    <code>npm run build:widgets -- --mode DEV1</code>, the
+    <code>--mode DEV1</code> is added to the end of the inner
+    <code>npm --prefix widget-library run build</code> command. There it has no
+    <code>--</code> in front of it, so npm reads <code>--mode</code> as one of
+    its own options and Vite never sees it. Calling the library's build directly
+    with a single <code>--</code> avoids that.
+  </p>
+
+  <p>
+    Only the deploy scripts get the widget step. The everyday
+    <code>build:dev</code> and <code>build:prod</code> scripts stay fast and copy
+    <code>pages/</code> as before.
+  </p>
+
+  <hr />
+
+  <h2>3. Install the Widget Dependencies in CI</h2>
+
+  <p>
+    This step is easy to miss. CI starts every build from a fresh clone, and
+    <code>widget-library/node_modules</code> is gitignored. On your machine the
+    build works because you ran <code>npm install</code> once. In CI it fails:
+  </p>
+
+  <pre><code>tsc: not found</code></pre>
+
+  <p>Add the install to the CI install phase:</p>
+
+  <pre><code># buildspec.yml
+phases:
+  install:
+    commands:
+      - node -v
+      - npm ci --prefix widget-library</code></pre>
+
+  <blockquote>“Why <code>npm ci</code> and not <code>npm install</code>?”</blockquote>
+
+  <p>
+    <code>npm ci</code> installs exactly what the lock file lists, and it fails
+    if the lock file and <code>package.json</code> disagree. That's what you
+    want in CI: the same versions every time, or a loud error.
+  </p>
+
+  <blockquote>“Won't installing at the repo root cover the subfolder?”</blockquote>
+
+  <p>
+    No. npm only installs the dependencies of the <code>package.json</code> you
+    point it at. A nested project needs its own install. (npm workspaces would
+    change that, but you don't need them for one subfolder.)
+  </p>
+
+  <hr />
+
+  <h2>4. Give the Widgets a Per-Environment Config</h2>
+
+  <p>
+    The widgets need an API endpoint and key, and dev and prod differ. A common
+    pattern in Vite apps is a table of values, keyed by environment:
+  </p>
+
+  <pre><code class="language-javascript">// widget-library/src/lib/config.ts
+const variables = {
+  DEV1: {
+    apiPublicKey: "dev-public-key",
+    graphqlApiPublic: "https://dev.example.com/graphql",
+  },
+  PROD: {
+    apiPublicKey: "prod-public-key",
+    graphqlApiPublic: "https://api.example.com/graphql",
+  },
+};
+
+const env: keyof typeof variables =
+  import.meta.env.MODE in variables
+    ? (import.meta.env.MODE as keyof typeof variables)
+    : "DEV1";
+
+export const config = variables[env];</code></pre>
+
+  <p>
+    The environment comes from Vite's <strong>mode</strong>.
+    <code>vite build --mode PROD</code> sets
+    <code>import.meta.env.MODE</code> to <code>"PROD"</code>, and Vite replaces
+    it with that string at build time. The dev server runs in mode
+    <code>"development"</code>, which isn't in the table, so it falls back to
+    DEV1.
+  </p>
+
+  <blockquote>“Why not set <code>VITE_APP_ENV=PROD</code> in the script, like other apps do?”</blockquote>
+
+  <p>
+    <code>VITE_APP_ENV=PROD vite build</code> is shell syntax. It works in CI on
+    Linux, but npm on Windows runs scripts in <code>cmd.exe</code>, where it
+    fails. <code>--mode</code> is a plain argument, so it works everywhere,
+    without adding a package like <code>cross-env</code>.
+  </p>
+
+  <h3>Only public values belong here</h3>
+
+  <p>
+    Whatever this file holds ends up in <code>widgets.js</code>, and every
+    visitor downloads <code>widgets.js</code>. Minifying the file doesn't hide
+    anything, and neither does reading the value from an environment variable at
+    build time: Vite writes the value into the bundle either way.
+  </p>
+
+  <p>
+    So put only keys that are meant to be public here, such as a key for a
+    public, rate-limited endpoint. If your other apps also have a private key or
+    an admin endpoint, leave them out. Anything that has to stay secret belongs
+    on a server, not in a script tag.
+  </p>
+
+  <blockquote>“I added the config, but the key isn't in the bundle. Is the build broken?”</blockquote>
+
+  <p>
+    No. Vite drops code nothing uses. Until a widget imports
+    <code>config</code>, the values never reach <code>widgets.js</code>. Once one
+    does, they're replaced at build time with the values for that mode.
+  </p>
+
+  <hr />
+
+  <h2>How to Check the Dev Build Passes</h2>
+
+  <p>From the repo root:</p>
+
+  <pre><code># 1. install the widget dependencies the way CI does
+npm ci --prefix widget-library
+
+# 2. run the dev deploy build
+npm run build:DEV1</code></pre>
+
+  <p>It passed if the command exits with code 0 and you see, in order:</p>
+
+  <ul>
+    <li><code>tsc -b &amp;&amp; vite build --mode DEV1</code>, with no type errors after it</li>
+    <li><code>building client environment for DEV1...</code>, which shows the mode reached Vite</li>
+    <li>a line for <code>../pages/assets/widgets.js</code> with its size</li>
+    <li>the site build's own success line</li>
+  </ul>
+
+  <p>Then check the output:</p>
+
+  <ul>
+    <li><code>dist/assets/widgets.js</code> exists.</li>
+    <li>The dev-only outputs look right, for example <code>robots.txt</code> blocks crawlers and there's no sitemap.</li>
+    <li>
+      <code>git status</code> shows <code>pages/assets/widgets.js</code>
+      unchanged. If it's modified, the committed copy was out of date with the
+      widget source, so commit the new one.
+    </li>
+    <li>
+      Once a widget uses the config, search the bundle for the dev key. It
+      should be there after <code>build:DEV1</code> and absent after
+      <code>build:PROD</code>.
+    </li>
+  </ul>
+
+  <p>
+    To be fully sure CI will pass, run the same two commands in a fresh clone of
+    your branch. CI only sees what you committed.
+  </p>
+
+  <hr />
+
+  <h2>Summary</h2>
+
+  <ul>
+    <li>Build the widgets into <code>pages/</code> first, then copy <code>pages/</code> to <code>dist/</code>. Chain them with <code>&amp;&amp;</code>.</li>
+    <li>Use <code>npm --prefix &lt;folder&gt; run build -- --mode X</code>. A wrapper script loses the <code>--mode</code> flag.</li>
+    <li>Set <code>emptyOutDir: false</code> when Vite writes into a folder it doesn't own.</li>
+    <li>Add <code>npm ci --prefix &lt;folder&gt;</code> to CI. A fresh clone has no <code>node_modules</code>.</li>
+    <li>Choose config values with Vite's <code>--mode</code>. It works on every OS.</li>
+    <li>Everything in the bundle is public. Keep private keys out of it.</li>
+  </ul>
+</div>
