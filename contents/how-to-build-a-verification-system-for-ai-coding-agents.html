@@ -1,0 +1,413 @@
+<div class="container">
+  <h1>How to Build a Verification System for AI Coding Agents</h1>
+
+  <p>
+    An AI agent writes a feature. The build is green, the agent says "done",
+    and the pull request looks fine. None of that tells you the feature works.
+    A green build only proves the code compiled and the tests that exist
+    passed. It says nothing about the requirements nobody wrote a test for.
+  </p>
+
+  <blockquote>“How do I know the agent built what I asked for, and not just something that compiles?”</blockquote>
+
+  <p>
+    This article is a plan for answering that question with evidence. It covers
+    what to read first, the three separate things you need to verify, a worked
+    point-of-sale (POS) example, and a score model that keeps "unproven" from
+    passing as "done".
+  </p>
+
+  <hr />
+
+  <h2>1. Read These First</h2>
+
+  <p>Five pieces, in this order:</p>
+
+  <ol>
+    <li>
+      <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Demystifying Evals for AI Agents</a>
+      (Anthropic, January 2026). Evaluation datasets, success criteria,
+      measuring agent performance, catching regressions, repeatable evals.
+    </li>
+    <li>
+      <a href="https://developers.googleblog.com/">Evaluating AI Agents: Moving Past the Vibe Check</a>
+      (Google Developers, October 2026). Evaluation pipelines, critical user
+      journeys, synthetic scenarios, execution traces.
+    </li>
+    <li>
+      <a href="https://developers.googleblog.com/">The Anatomy of Harness Engineering</a>
+      (Google Developers, September 2026). The infrastructure around coding
+      agents: behavioural evals, regression prevention, feedback loops.
+    </li>
+    <li>
+      <a href="https://martinfowler.com/">Maintainability Sensors for Coding Agents</a>
+      (Martin Fowler, May 2026). Static analysis, dependency rules, mutation
+      testing, architecture checks.
+    </li>
+    <li>
+      <a href="https://developers.openai.com/">Testing Agent Skills Systematically with Evals</a>
+      (OpenAI, January 2026). Capturing traces, writing checks, scoring
+      whether an agent followed instructions.
+    </li>
+  </ol>
+
+  <p>
+    Some links go to the publisher's home page. Search there for the title.
+  </p>
+
+  <p>Then, as needed:</p>
+
+  <ul>
+    <li><strong>Eval-driven development</strong>, <a href="https://developers.redhat.com/">Red Hat</a>. The eval-driven lifecycle.</li>
+    <li><strong>A Methodical Approach to Agent Evaluation</strong>, <a href="https://cloud.google.com/">Google Cloud</a>. Outcome, process and safety evals.</li>
+    <li><strong>Evaluate Agent Workflows</strong>, <a href="https://platform.openai.com/docs/guides/agent-evals">OpenAI</a>. Traces, graders, datasets and eval runs.</li>
+    <li><strong>Eval Driven System Design</strong>, <a href="https://cookbook.openai.com/">OpenAI Cookbook</a>. Designing a system around its evals.</li>
+    <li><strong>Building Effective AI Agents</strong>, <a href="https://www.anthropic.com/research/building-effective-agents">Anthropic</a>. Composable agent design and tool use.</li>
+  </ul>
+
+  <h3>Tools worth studying</h3>
+
+  <ul>
+    <li><a href="https://playwright.dev/docs/intro">Playwright</a>: browser acceptance tests, screenshots, network inspection, assertions on real user flows.</li>
+    <li><a href="https://langfuse.com/docs">Langfuse</a>: agent tracing, eval datasets, experiments and their results.</li>
+    <li><a href="https://www.promptfoo.dev/docs/intro/">Promptfoo</a>: eval matrices, assertions, model comparisons, red-teaming.</li>
+    <li>Microsoft's AI Agent Evaluation Scenario Library: reusable scenarios, acceptance criteria and quality signals.</li>
+  </ul>
+
+  <hr />
+
+  <h2>2. Three Different Questions</h2>
+
+  <p>
+    "Verify the AI's work" is really three separate problems. Mixing them up is
+    how a well-behaved agent ships a broken refund flow, or how a working
+    feature hides a tangled design.
+  </p>
+
+  <ul>
+    <li>
+      <strong>Agent evaluation:</strong> did the agent follow the right process
+      and produce good code? You check its trace: what it read, what it ran, what
+      it changed.
+    </li>
+    <li>
+      <strong>Application verification:</strong> does the software meet the
+      user's requirements? You run the app and test its behaviour.
+    </li>
+    <li>
+      <strong>Architecture verification:</strong> does the code respect the
+      intended structure? You check imports, dependencies and where the logic
+      lives.
+    </li>
+  </ul>
+
+  <blockquote>“Can't I just average the three into one quality score?”</blockquote>
+
+  <p>
+    No. An agent that followed every rule can still ship a wrong tax
+    calculation, and correct code can still break every layering rule you have.
+    One number hides which problem you have. Keep three scores, each with its
+    own evidence.
+  </p>
+
+  <hr />
+
+  <h2>3. Write Requirements the Machine Can Check</h2>
+
+  <p>
+    Everything starts from the specification. A sentence like "refunds should
+    be handled correctly" can't be verified. Split each requirement into a
+    given / when / then with an ID, a priority and the checks that prove it:
+  </p>
+
+  <pre><code class="language-yaml"># spec/refunds.yaml
+- id: R3
+  title: A refund cannot exceed the amount paid
+  priority: critical
+  given: an order paid in full for 100.00
+  when: a refund of 120.00 is requested
+  then:
+    - the API rejects it with 422
+    - no refund row is written
+    - the order balance is unchanged
+  verified_by:
+    - type: api
+      test: TestR3_RefundCannotExceedAmountPaid
+    - type: db
+      check: refunds table has no row for the order</code></pre>
+
+  <p>
+    The <code>verified_by</code> list matters most. It links each requirement to
+    the tests that prove it. A requirement with an empty list isn't failing.
+    It's <strong>not verified</strong>, and the report must say so.
+  </p>
+
+  <p>The matching test, in Go, names the requirement it covers:</p>
+
+  <pre><code class="language-go">func TestR3_RefundCannotExceedAmountPaid(t *testing.T) {
+	order := createPaidOrder(t, 100_00) // amounts in cents
+
+	resp := requestRefund(t, order.ID, 120_00)
+
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("want 422, got %d", resp.StatusCode)
+	}
+	if n := countRefunds(t, order.ID); n != 0 {
+		t.Fatalf("want 0 refund rows, got %d", n)
+	}
+}</code></pre>
+
+  <blockquote>“Why check the database as well as the HTTP status?”</blockquote>
+
+  <p>
+    A handler can return 422 after it has already written the refund. The status
+    code is what the API says. The row count is what actually happened. Run the
+    database in a throwaway container (Testcontainers) so each run starts from a
+    known state.
+  </p>
+
+  <hr />
+
+  <h2>4. A Concrete POS Example</h2>
+
+  <p>
+    Say you asked an agent to build the order and payment core of a POS. The
+    spec has seven requirements:
+  </p>
+
+  <pre><code>ID  Requirement                                     Priority  Weight
+R1  Total = sum(qty x price) - discounts + tax      critical  3
+R2  Percentage discount is applied before tax       critical  3
+R3  A refund cannot exceed the amount paid          critical  3
+R4  Split card + cash settles only at exact total   major     2
+R5  Tax rounds half-up to 2 places per order        major     2
+R6  Receipt shows a discount line                   minor     1
+R7  A voided item disappears from the kitchen       major     2
+    ticket</code></pre>
+
+  <p>Each one is checked a different way:</p>
+
+  <ul>
+    <li><strong>R1, R2, R5:</strong> Go API tests with fixed baskets, for example 3 items, a 10% discount and 8.25% tax, with the expected total worked out by hand.</li>
+    <li><strong>R3, R4:</strong> API tests plus database checks, as shown above.</li>
+    <li><strong>R6:</strong> a Playwright test that completes a sale, screenshots the receipt and asks a model whether a discount line is visible.</li>
+    <li><strong>R7:</strong> nothing yet. The agent built the feature but wrote no test for it.</li>
+  </ul>
+
+  <p>The run comes back like this:</p>
+
+  <pre><code>R1  PASS          api test
+R2  PASS          api test
+R3  FAIL          refund of 120.00 on a 100.00 order returned 200
+R4  PASS          api test + db check
+R5  PASS          api test
+R6  PASS          screenshot, AI-judged
+R7  NOT VERIFIED  no test linked</code></pre>
+
+  <p>
+    The agent reported "all tests pass", and it was right: every test that
+    existed passed. But no test covered R3's limit, and none covered R7. The
+    verification run found the real refund bug only because the spec required a
+    test for R3.
+  </p>
+
+  <hr />
+
+  <h2>5. The Score Model</h2>
+
+  <p>
+    Each requirement gets three values:
+  </p>
+
+  <ul>
+    <li><strong>Weight (w):</strong> critical = 3, major = 2, minor = 1.</li>
+    <li><strong>Status (s):</strong> PASS = 1, FAIL = 0, NOT VERIFIED = 0.</li>
+    <li>
+      <strong>Evidence confidence (c):</strong> a deterministic test (API, database
+      or browser assertion) = 1.0. An AI-judged check, such as a screenshot read by
+      a model, = 0.6. No evidence = 0.
+    </li>
+  </ul>
+
+  <p>From those, the application side gets two numbers:</p>
+
+  <pre><code>correctness = sum(w * s * c) / sum(w)
+coverage    = sum(w for every requirement that has a result) / sum(w)</code></pre>
+
+  <blockquote>“Why does NOT VERIFIED score 0 instead of being left out?”</blockquote>
+
+  <p>
+    If you leave it out, a project with one passing test and fifty untested
+    requirements scores 100%. Counting it as 0 means unproven work pulls the
+    score down. Coverage then tells you how much of the gap is missing evidence
+    rather than broken code.
+  </p>
+
+  <h3>The POS run, scored</h3>
+
+  <pre><code>         w   s   c    w*s*c
+R1       3   1   1.0  3.0
+R2       3   1   1.0  3.0
+R3       3   0   1.0  0.0
+R4       2   1   1.0  2.0
+R5       2   1   1.0  2.0
+R6       1   1   0.6  0.6
+R7       2   0   0    0.0
+total   16            10.6
+
+correctness = 10.6 / 16 = 66%
+coverage    = 14 / 16   = 88%</code></pre>
+
+  <h3>Gates beat averages</h3>
+
+  <p>
+    A score is for trends. A release decision needs hard rules on top of it:
+  </p>
+
+  <ul>
+    <li>Any critical requirement that FAILs blocks the release.</li>
+    <li>Every critical requirement must have deterministic evidence (c = 1.0). A model's opinion of a screenshot isn't enough for money.</li>
+    <li>Correctness and coverage must not drop below the last release.</li>
+  </ul>
+
+  <p>
+    The POS run is <strong>BLOCKED</strong> by R3, whatever the 66% says.
+  </p>
+
+  <h3>The other two scores</h3>
+
+  <p>
+    <strong>Agent score</strong> comes from the trace: a checklist of process
+    checks, each pass or fail. For the POS run:
+  </p>
+
+  <pre><code>read the spec before editing code       PASS
+ran the full test suite before "done"   PASS
+stayed inside the allowed directories   PASS
+final claim matches the evidence        PASS
+did not edit existing tests or spec     FAIL  changed an expected total in a test
+
+agent score = 4 / 5 = 80%   (hard fail: edited a test to make it pass)</code></pre>
+
+  <p>
+    Editing a test to make it pass is a hard fail, just like a critical
+    requirement failing. Flag it however high the rest of the score is.
+  </p>
+
+  <p>
+    <strong>Architecture score</strong> comes from dependency and placement
+    rules, checked by static analysis:
+  </p>
+
+  <pre><code>domain/ imports nothing from http/ or db/       PASS
+payments go through the PaymentGateway interface PASS
+no import cycles                                 PASS
+pricing and refund rules live in domain/          FAIL  refund limit computed in handlers/refund.go
+
+architecture score = 3 / 4 = 75%</code></pre>
+
+  <p>
+    The architecture failure and the R3 bug have the same cause. The refund
+    check was written in the HTTP handler instead of the domain layer, and one
+    route skipped it. That's why the three scores are kept apart: each points at
+    a different fix.
+  </p>
+
+  <hr />
+
+  <h2>6. The Report</h2>
+
+  <p>
+    Write the report as JSON, so CI can read the gates, and render the same data
+    as HTML for people. One entry per requirement, each pointing to its
+    evidence:
+  </p>
+
+  <pre><code class="language-json">{
+  "run": "2026-11-05T10:42:00Z",
+  "verdict": "BLOCKED",
+  "blocked_by": ["R3"],
+  "scores": {
+    "application": { "correctness": 0.66, "coverage": 0.88 },
+    "agent": { "score": 0.80, "hard_fails": ["edited-test"] },
+    "architecture": { "score": 0.75 }
+  },
+  "requirements": [
+    {
+      "id": "R3",
+      "status": "FAIL",
+      "confidence": 1.0,
+      "evidence": [
+        "logs/R3-api.txt",
+        "db/R3-refunds-snapshot.json"
+      ]
+    },
+    {
+      "id": "R7",
+      "status": "NOT VERIFIED",
+      "confidence": 0,
+      "evidence": []
+    }
+  ]
+}</code></pre>
+
+  <hr />
+
+  <h2>7. What to Build: specguard</h2>
+
+  <p>
+    The project is a standalone verification tool, working name
+    <code>specguard</code>. The planned stack:
+  </p>
+
+  <ul>
+    <li><strong>Orchestration:</strong> Go.</li>
+    <li><strong>Spec format:</strong> YAML or JSON.</li>
+    <li><strong>Agent communication:</strong> MCP.</li>
+    <li><strong>LLM calls:</strong> Vercel AI SDK or the model APIs directly.</li>
+    <li><strong>Browser checks:</strong> Playwright.</li>
+    <li><strong>API checks:</strong> Go tests.</li>
+    <li><strong>Database checks:</strong> Testcontainers.</li>
+    <li><strong>Visual checks:</strong> Playwright screenshots judged by a model.</li>
+    <li><strong>Reports:</strong> JSON and HTML.</li>
+  </ul>
+
+  <h3>First milestone</h3>
+
+  <ol>
+    <li>Take a project requirements document.</li>
+    <li>Turn it into structured acceptance criteria, like the YAML above.</li>
+    <li>Generate tests, or link existing ones, for each criterion.</li>
+    <li>Run them against the application.</li>
+    <li>Capture screenshots, logs and results.</li>
+    <li>Produce a per-requirement PASS / FAIL / NOT VERIFIED report.</li>
+  </ol>
+
+  <blockquote>“If an LLM writes the tests in step 3, who checks the tests?”</blockquote>
+
+  <p>
+    A person, at least at first. A generated test is a claim about the spec, so
+    review it against the spec, not against the code. Mutation testing helps
+    too: change the code on purpose, for example flip the refund comparison,
+    and check that some test fails. If nothing fails, the test isn't really
+    checking anything.
+  </p>
+
+  <hr />
+
+  <h2>Summary</h2>
+
+  <ul>
+    <li>The specification defines what should exist.</li>
+    <li>The implementation defines what was built.</li>
+    <li>The tests establish what actually works.</li>
+    <li>The evidence establishes why you believe it works.</li>
+    <li>The auditor identifies what remains unproven.</li>
+  </ul>
+
+  <p>
+    Keep agent, application and architecture scores separate. Count NOT VERIFIED
+    as 0. Let critical failures block a release whatever the average says. The
+    goal is CI/CD for correctness, not just CI/CD for builds that pass.
+  </p>
+</div>
