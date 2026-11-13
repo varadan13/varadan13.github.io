@@ -1,0 +1,140 @@
+<div class="container">
+  <h1>The Home Repo Pattern for AI Agents</h1>
+
+  <blockquote>This post was written by an LLM (Claude) and edited by me.</blockquote>
+
+  <p>
+    Most companies split their code across many repos: a storefront, a
+    payments API, an admin dashboard, and twenty more you touch now and then.
+  </p>
+
+  <pre><code class="language-plaintext">acme-storefront/
+acme-payments-api/
+acme-admin-dashboard/
+...20 more</code></pre>
+
+  <p>
+    An AI coding agent works better with context: rules (<code>CLAUDE.md</code>
+    or <code>AGENTS.md</code>), skills, and notes about the project. That
+    context has to live somewhere.
+  </p>
+
+  <blockquote>“Where do the agent's rules and skills live when the code is spread over thirty repos?”</blockquote>
+
+  <hr />
+
+  <h2>Two bad answers</h2>
+
+  <p>
+    <strong>Copy them into every repo.</strong> Now you have thirty copies.
+    You fix a skill in one repo and the other twenty-nine drift.
+  </p>
+
+  <p>
+    <strong>Put them in your user folder</strong> (<code>~/.claude</code>).
+    Every repo can see them, but your teammates can't. They aren't versioned,
+    and they fall behind. That folder is also meant for <em>your</em>
+    preferences, not the team's rules.
+  </p>
+
+  <hr />
+
+  <h2>The fix: a home repo</h2>
+
+  <p>
+    Make one extra repo whose only job is to be the agent's home. You always
+    start the agent there, and it reaches the other repos by file path.
+  </p>
+
+  <pre><code class="language-plaintext">        ┌────────────────────────────┐
+        │         HOME REPO          │  ← start the agent here
+        │  CLAUDE.md  (map + rules)  │
+        │  .claude/skills/           │
+        │  wiki/      (facts)        │
+        │  tools/                    │
+        └──────┬─────────┬─────────┬─┘
+               │ path    │ path    │ path
+               ▼         ▼         ▼
+         storefront  payments  dashboard
+         (own PRs)   (own PRs) (own PRs)</code></pre>
+
+  <blockquote>“How does the agent know where the other repos are?”</blockquote>
+
+  <hr />
+
+  <p>
+    You tell it. The home repo's <code>CLAUDE.md</code> holds a map, like a
+    phone book:
+  </p>
+
+  <pre><code class="language-markdown">## Repos
+
+| Repo         | Path                      | What               |
+|--------------|---------------------------|--------------------|
+| Storefront   | ~/code/acme-storefront    | Customer web app   |
+| Payments API | ~/code/acme-payments-api  | Payment service    |
+| Dashboard    | ~/code/acme-admin         | Internal admin UI  |
+
+Working in a repo:
+1. Read its own CLAUDE.md first.
+2. Missing on disk? Clone it.
+3. Commits and PRs go to that repo, not this one.</code></pre>
+
+  <p>
+    That is the whole trick. The agent starts at home, so it loads every rule
+    and skill. When a task touches the storefront, it opens that path, works
+    there, and opens its pull request there.
+  </p>
+
+  <hr />
+
+  <h2>What you get</h2>
+
+  <ul>
+    <li><strong>One source of truth.</strong> Fix a skill once and every session has the fix.</li>
+    <li><strong>Versioned.</strong> It's a normal git repo, so changes get reviewed and shared.</li>
+    <li><strong>Cross-repo work in one session.</strong> One request becomes a fix in the storefront, a matching change in the payments API, and two pull requests.</li>
+    <li><strong>Team settings.</strong> A committed <code>.claude/settings.json</code> gives everyone the same agent setup.</li>
+    <li><strong>Room to grow.</strong> A wiki of project facts and custom tools (Slack, Jira, email) fit naturally in the same place.</li>
+  </ul>
+
+  <blockquote>“What happens when you have four hundred repos, not twenty?”</blockquote>
+
+  <hr />
+
+  <h2>Scaling with progressive disclosure</h2>
+
+  <p>
+    A flat list works for twenty to forty repos. Past that, group the repos
+    and let the agent drill down, reading only the file it needs:
+  </p>
+
+  <pre><code class="language-plaintext">CLAUDE.md
+  ├── repos/frontend.md  → storefront, dashboard, ...
+  ├── repos/backend.md   → payments-api, orders-api, ...
+  └── repos/internal.md  → tooling, scripts, ...</code></pre>
+
+  <hr />
+
+  <h2>When not to bother</h2>
+
+  <p>
+    If all your code can live in one monorepo, use the monorepo. The home
+    repo is for when it can't, for example because some repos must be public
+    and others private, or because nobody will agree to merge them.
+  </p>
+
+  <hr />
+
+  <h2>Takeaway</h2>
+
+  <p>
+    Context lives in one place. Code lives where it belongs. The agent always
+    starts at home.
+  </p>
+
+  <p>
+    Credit: the idea comes from Matt Pocock's "home repo pattern" video and
+    article on AI Hero.
+  </p>
+</div>
